@@ -177,6 +177,19 @@ Also added on purpose for the demo:
 
 ---
 
+### Deploy online (Render, free)
+
+The repo has a `Dockerfile` and a `render.yaml`, so it can be deployed straight from GitHub.
+
+1. Sign in at https://render.com with GitHub.
+2. Click **New > Blueprint** and pick this repository. Render reads `render.yaml` and creates the web service.
+3. Wait for the build (about 5 to 8 minutes the first time). The site opens at `https://tricity-connect-xxxx.onrender.com`.
+
+Notes:
+- The free plan uses the built-in H2 database, so demo data is reset on every restart.
+- A free service sleeps after 15 minutes without visits. The first visit after that takes about a minute.
+- To keep data, create a MySQL database (for example on Aiven or Railway) then in the Render environment settings delete `SPRING_PROFILES_ACTIVE` and add `DB_URL`, `DB_USER` and `DB_PASSWORD`.
+
 ## 6. Demo logins
 
 | Role | Login | Password |

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: tricity-connect
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: h2
+      - key: H2_CONSOLE
+        value: "false"
+      - key: THYMELEAF_CACHE
+        value: "true"
