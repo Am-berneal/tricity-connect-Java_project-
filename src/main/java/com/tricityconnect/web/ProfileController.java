@@ -79,11 +79,20 @@ public class ProfileController {
     }
 
     @PostMapping("/wallet/topup")
-    public String topUp(@RequestParam BigDecimal amount, @RequestParam(defaultValue = "UPI") String method,
+    public String topUp(@RequestParam(required = false) String amount,
+                        @RequestParam(required = false, defaultValue = "UPI") String method,
                         RedirectAttributes flash) {
+        BigDecimal value;
         try {
-            AppUser u = walletService.topUp(currentUser.require(), amount, method);
-            flash.addFlashAttribute("success", "₹" + amount + " added. New balance ₹" + u.getWalletBalance() + ".");
+            value = new BigDecimal(amount == null ? "" : amount.replace(",", "").replace("₹", "").trim());
+        } catch (NumberFormatException e) {
+            flash.addFlashAttribute("error", "Enter an amount between ₹1 and ₹5,000, or tap a quick-add button.");
+            return "redirect:/profile?tab=wallet";
+        }
+        try {
+            AppUser u = walletService.topUp(currentUser.require(), value, method);
+            flash.addFlashAttribute("success", "₹" + value.stripTrailingZeros().toPlainString()
+                    + " added to your TriCity Wallet. New balance ₹" + u.getWalletBalance() + ".");
         } catch (BookingException e) {
             flash.addFlashAttribute("error", e.getMessage());
         }

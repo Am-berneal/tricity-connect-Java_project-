@@ -139,7 +139,7 @@
 
     ready(function () {
         // ---------- toast flash messages: close button + auto-dismiss (always on)
-        document.querySelectorAll('.bg-green-50.border-green-200, .bg-red-50.border-red-200').forEach(box => {
+        document.querySelectorAll('.bg-green-50.border-green-200, .bg-amber-50.border-amber-200').forEach(box => {
             if (!box.closest('main') && !box.parentElement.classList.contains('max-w-7xl')) return;
             box.classList.add('toast');
             const close = document.createElement('button');
@@ -207,9 +207,6 @@
                 h.appendChild(s);
                 if (i < words.length - 1) h.appendChild(document.createTextNode(' '));
             });
-            // last two words shimmer orange
-            const spans = h.querySelectorAll('.word');
-            spans.forEach((s, i) => { if (i >= spans.length - 2) s.classList.add('shimmer-text'); });
         });
 
         // ---------- scroll progress + back-to-top

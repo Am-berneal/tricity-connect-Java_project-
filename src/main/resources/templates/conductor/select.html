@@ -19,7 +19,7 @@
         <div>
             <div class="font-bold text-navy" th:text="${t.route.code} + ' · ' + ${#temporals.format(t.departureTime, 'hh:mm a')}">TC-104 07:45</div>
             <div class="text-xs text-slate-500" th:text="${t.route.endpoints}">endpoints</div>
-            <div class="text-xs text-slate-500" th:text="'Bus ' + ${t.bus.regNo} + ' · Bay ' + ${t.bay}">bus</div>
+            <div class="text-xs text-slate-500" th:text="'Bus ' + ${t.bus.regNo} + ' · ' + ${t.bay}">bus</div>
         </div>
         <span class="chip" th:classappend="${t.disrupted} ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
               th:text="${t.disrupted} ? 'DISRUPTED' : ${t.status}">status</span>

@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
-<head th:replace="~{fragments/layout :: head('Something went wrong')}"></head>
+<head th:replace="~{fragments/layout :: head('Page unavailable')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: navbar('')}"></header>
 <main class="max-w-xl mx-auto px-4 py-20 text-center">
     <div class="text-6xl">🚏</div>
-    <h1 class="text-3xl font-extrabold mt-4" th:text="${status == 404} ? 'Page not found' : 'Something went wrong'">Something went wrong</h1>
-    <p class="text-slate-500 mt-2" th:text="${message != null and message != ''} ? ${message} : 'Please go back and try again.'">Please try again.</p>
-    <p class="text-xs text-slate-400 mt-1" th:if="${status != null}" th:text="'Error code ' + ${status}">Error</p>
+    <h1 class="text-3xl font-extrabold text-navy mt-4"
+        th:text="${status == 404} ? 'This stop doesn\'t exist' : (${status == 403} ? 'This area is for TriCity staff' : 'Let\'s try that again')">Let's try that again</h1>
+    <p class="text-slate-500 mt-2"
+       th:text="${message != null and message != ''} ? ${message} : (${status == 404} ? 'The page you opened was moved or never existed.' : (${status == 403} ? 'Please log in with an admin or conductor account to open this page.' : 'Please go back and try once more.'))">Please go back and try once more.</p>
     <div class="flex justify-center gap-3 mt-6">
         <a href="javascript:history.back()" class="btn-light">← Go back</a>
         <a th:href="@{/}" class="btn-primary">Home</a>
