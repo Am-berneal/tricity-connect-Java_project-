@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Help Centre')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('help')}"></header>
+
+<section class="bg-gradient-to-br from-navy to-navy-dark text-white">
+    <div class="max-w-4xl mx-auto px-4 py-12 text-center">
+        <span class="chip bg-white/10">✓ Chandigarh • Mohali • Panchkula Transit Help</span>
+        <h1 class="text-4xl font-extrabold mt-3" th:text="${currentUser != null} ? ('How can we help you today, ' + ${currentUser.firstName} + '?') : 'How can we help you today?'">How can we help?</h1>
+        <p class="text-white/70 mt-2">Search guides and FAQs, chat with the TriCity Transit Assistant, or file a grievance.</p>
+        <div class="mt-6 bg-white rounded-2xl p-2 flex gap-2 max-w-2xl mx-auto">
+            <input id="faqSearch" class="flex-1 px-4 py-3 text-slate-800 outline-none rounded-xl" placeholder="How can we help? (e.g., refund timeline, ladies seat rules, monthly pass)">
+            <button type="button" class="btn-primary" onclick="filterFaqs()">Search Help →</button>
+        </div>
+        <div class="flex flex-wrap justify-center gap-2 mt-4 text-xs">
+            <span class="text-white/60">Frequent searches:</span>
+            <button type="button" class="chip bg-white/10" onclick="quick('Mohali')">Mohali Phase 7 bus bay</button>
+            <button type="button" class="chip bg-white/10" onclick="quick('refund')">Disruption refund</button>
+            <button type="button" class="chip bg-white/10" onclick="quick('pass')">Pass rules</button>
+            <button type="button" class="chip bg-white/10" onclick="quick('ladies')">Ladies seats</button>
+            <button type="button" class="chip bg-white/10" onclick="quick('fare')">Fares</button>
+        </div>
+    </div>
+</section>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-7xl mx-auto px-4 lg:px-6 py-8">
+    <!-- Categories -->
+    <div class="grid md:grid-cols-3 gap-4">
+        <a th:each="c, st : ${categories}" th:href="@{/help(topic=${c})}" class="card p-5 hover:shadow-md"
+           th:classappend="${topic == c} ? 'border-navy border-2' : ''">
+            <div class="flex justify-between"><span class="text-2xl" th:text="${st.index == 0} ? '💺' : (${st.index == 1} ? '🎫' : (${st.index == 2} ? '↺' : (${st.index == 3} ? '🛡' : (${st.index == 4} ? '👛' : '🚏'))))">💺</span>
+                <span class="text-xs text-slate-400" th:text="${faqCounts.get(c)} + ' articles'">3</span></div>
+            <h3 class="font-bold mt-2" th:text="${c}">Booking &amp; Seats</h3>
+            <span class="text-xs text-navy font-semibold">Browse guides ›</span>
+        </a>
+    </div>
+
+    <div class="grid lg:grid-cols-5 gap-6 mt-10">
+        <!-- FAQs -->
+        <section class="lg:col-span-3">
+            <div class="flex justify-between items-end">
+                <div><h2 class="text-2xl font-extrabold text-navy">Popular Questions &amp; Commuter Guidelines</h2>
+                    <p class="text-xs text-slate-500">Answers use the current timetable and fare rules.</p></div>
+                <a th:if="${topic != 'all'}" th:href="@{/help}" class="text-sm text-navy font-semibold">Show all</a>
+            </div>
+            <div class="space-y-3 mt-4" id="faqList">
+                <details th:each="f, st : ${faqs}" class="card p-5 faq" th:open="${st.first}">
+                    <summary class="font-semibold cursor-pointer flex justify-between">
+                        <span th:text="${f.question()}">Question?</span><span class="text-slate-400">⌄</span></summary>
+                    <p class="text-sm text-slate-600 mt-3 bg-slate-50 rounded-xl p-4" th:text="${f.answer()}">Answer</p>
+                    <span class="chip bg-navy-light text-navy mt-3" th:text="${f.category()}">category</span>
+                </details>
+                <p id="noFaq" class="hidden card p-6 text-center text-slate-500">No guide matches — ask the assistant or file a grievance.</p>
+            </div>
+
+            <div class="card p-6 mt-6 bg-brand-light/60 border-brand/30">
+                <h3 class="font-bold">Unsatisfied with automated guidance?</h3>
+                <p class="text-sm text-slate-600">File a grievance with the Chief Transit Officer (CTU). You get a tracking ID instantly.</p>
+                <div th:if="${currentUser == null}" class="mt-3 text-sm"><a th:href="@{/login}" class="text-navy font-semibold">Log in</a> to file a grievance.</div>
+                <form th:if="${currentUser != null}" th:action="@{/help/grievance}" method="post" class="grid md:grid-cols-3 gap-3 mt-4">
+                    <select name="category" class="input"><option th:each="c : ${categories}" th:text="${c}">c</option><option>Staff behaviour</option><option>Other</option></select>
+                    <input name="pnr" class="input" placeholder="PNR (optional)" maxlength="10">
+                    <button class="btn-navy">File Grievance</button>
+                    <textarea name="message" class="input md:col-span-3" rows="3" required minlength="10" placeholder="Describe what happened…"></textarea>
+                </form>
+            </div>
+        </section>
+
+        <!-- Chat assistant -->
+        <aside class="lg:col-span-2" id="chat">
+            <div class="card overflow-hidden sticky top-20">
+                <div class="bg-navy text-white px-5 py-3 flex justify-between items-center">
+                    <span class="flex items-center gap-3"><span class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">🤖</span>
+                        <span><b>TriCity Transit Assistant</b><br><span class="text-xs text-green-300">● Answers instantly from live timetable</span></span></span>
+                    <form th:action="@{/help/chat/clear}" method="post"><button class="text-white/70 text-sm" title="Clear chat">↻</button></form>
+                </div>
+                <div class="p-4 space-y-3 h-96 overflow-y-auto bg-slate-50" id="chatBox">
+                    <div th:each="m : ${chat}" class="flex" th:classappend="${m.fromUser()} ? 'justify-end' : 'justify-start'">
+                        <div class="max-w-[85%] rounded-2xl px-4 py-2 text-sm"
+                             th:classappend="${m.fromUser()} ? 'bg-navy text-white rounded-br-sm' : 'bg-white border rounded-bl-sm'">
+                            <span th:text="${m.text()}">message</span>
+                            <div class="text-[10px] mt-1 opacity-60 text-right" th:text="${#temporals.format(m.time(), 'hh:mm a')}">08:14</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 px-4 pt-3 text-xs">
+                    <button type="button" class="chip border" onclick="ask('next bus from Kharar to Sector 17')">⏱ Next bus ETA</button>
+                    <button type="button" class="chip border" onclick="ask('where is Mohali Phase 7 stop')">📍 Stop info</button>
+                    <button type="button" class="chip border" onclick="ask('refund rules')">↺ Refunds</button>
+                </div>
+                <form th:action="@{/help/ask}" method="post" class="flex gap-2 p-4" id="askForm">
+                    <input name="q" id="askInput" class="input" placeholder="Type your question in English…" required maxlength="200">
+                    <button class="btn-primary !px-4">➤</button>
+                </form>
+                <div class="text-[10px] text-center text-slate-400 pb-3">Rule-based assistant · answers from the TriCity Connect database</div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Escalation -->
+    <section class="mt-14 text-center">
+        <div class="text-xs font-bold tracking-widest text-brand-dark">OFFICIAL ESCALATION CHANNELS</div>
+        <h2 class="text-3xl font-extrabold text-navy">Need direct civic escalation?</h2>
+        <div class="grid md:grid-cols-3 gap-5 mt-6 text-left">
+            <div class="card p-5"><div class="text-xs text-slate-500">TOLL-FREE 24×7</div><h3 class="font-bold">Transit Helpline</h3>
+                <div class="text-xl font-extrabold text-red-600 mt-1">112 / 1800-TRICITY</div><a href="tel:112" class="text-brand-dark text-sm font-semibold">Dial now →</a></div>
+            <div class="card p-5"><div class="text-xs text-slate-500">WRITTEN INQUIRIES</div><h3 class="font-bold">Email Support Desk</h3>
+                <div class="font-bold text-navy mt-1">support@tricityconnect.gov.in</div><span class="text-xs text-slate-500">Reply within 2 working days</span></div>
+            <div class="card p-5"><div class="text-xs text-slate-500">PHYSICAL ASSISTANCE</div><h3 class="font-bold">ISBT Terminal Desks</h3>
+                <div class="font-bold text-navy mt-1">Sector 17 &amp; Sector 43 ISBT</div><span class="text-xs text-slate-500">Open 06:00 AM – 10:00 PM</span></div>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script>
+    const box = document.getElementById('chatBox');
+    box.scrollTop = box.scrollHeight;
+    function ask(q) { document.getElementById('askInput').value = q; document.getElementById('askForm').submit(); }
+    function quick(q) { document.getElementById('faqSearch').value = q; filterFaqs(); }
+    function filterFaqs() {
+        const q = document.getElementById('faqSearch').value.toLowerCase().trim();
+        let shown = 0;
+        document.querySelectorAll('.faq').forEach(d => {
+            const match = !q || d.innerText.toLowerCase().includes(q);
+            d.classList.toggle('hidden', !match);
+            if (match) { shown++; if (q) d.open = true; }
+        });
+        document.getElementById('noFaq').classList.toggle('hidden', shown > 0);
+        document.getElementById('faqList').scrollIntoView({behavior: 'smooth'});
+    }
+    document.getElementById('faqSearch').addEventListener('keydown', e => { if (e.key === 'Enter') filterFaqs(); });
+</script>
+</body>
+</html>

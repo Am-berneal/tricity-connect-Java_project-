@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Executive Reports')}"></head>
+<body>
+<header th:replace="~{fragments/admin :: adminNav('reports')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-6">
+    <div class="flex flex-wrap justify-between items-end gap-4">
+        <div>
+            <div class="text-xs text-slate-500">Admin Console › Analytics › Executive Reports</div>
+            <h1 class="text-3xl font-extrabold text-navy">Tricity Executive Operations Report</h1>
+            <p class="text-sm text-slate-500">Revenue, ridership and occupancy across Chandigarh (UT), Mohali (Punjab) &amp; Panchkula (Haryana).</p>
+        </div>
+        <form method="get" class="card p-3 flex flex-wrap gap-2 items-end text-sm">
+            <div><label class="label">From</label><input type="date" name="from" th:value="${from}" class="input !py-1.5"></div>
+            <div><label class="label">To</label><input type="date" name="to" th:value="${to}" class="input !py-1.5"></div>
+            <div><label class="label">Corridor</label><select name="corridor" class="input !py-1.5">
+                <option value="">All corridors</option>
+                <option th:each="r : ${corridors}" th:value="${r.code}" th:text="${r.code} + ' · ' + ${r.endpoints}" th:selected="${r.code == corridor}">r</option></select></div>
+            <button class="btn-primary !py-2">Apply</button>
+            <a th:href="@{/admin/reports/export.csv(from=${from},to=${to},corridor=${corridor})}" class="btn-light !py-2">⬇ CSV</a>
+            <button type="button" onclick="window.print()" class="btn-light !py-2">🖨 Print / PDF</button>
+        </form>
+    </div>
+
+    <section class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        <div class="card p-5"><div class="text-xs text-slate-500">NET REVENUE</div>
+            <div class="text-3xl font-extrabold text-navy" th:text="'₹' + ${#numbers.formatDecimal(revenue, 1, 'COMMA', 0, 'POINT')}">₹0</div>
+            <div class="text-xs text-slate-500" th:text="'Gross ₹' + ${#numbers.formatDecimal(gross, 1, 'COMMA', 0, 'POINT')} + ' − refunds ₹' + ${#numbers.formatDecimal(refunds, 1, 'COMMA', 0, 'POINT')}">gross</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">PASSENGERS</div>
+            <div class="text-3xl font-extrabold text-brand-dark" th:text="${#numbers.formatInteger(passengers, 1, 'COMMA')}">0</div>
+            <div class="text-xs text-slate-500" th:text="${cancellations} + ' cancellations · avg fare ₹' + ${avgFare}">c</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">TRIPS OPERATED</div>
+            <div class="text-3xl font-extrabold text-navy" th:text="${#numbers.formatInteger(trips, 1, 'COMMA')}">0</div>
+            <div class="text-xs text-slate-500" th:text="${#temporals.format(from, 'dd MMM')} + ' – ' + ${#temporals.format(to, 'dd MMM yyyy')}">range</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">AVG OCCUPANCY</div>
+            <div class="text-3xl font-extrabold" th:classappend="${avgOccupancy >= 60} ? 'text-green-700' : 'text-amber-600'" th:text="${avgOccupancy} + '%'">0%</div>
+            <div class="h-2 bg-slate-100 rounded-full mt-2"><div class="h-2 bg-brand rounded-full" th:style="'width:' + ${avgOccupancy} + '%'"></div></div></div>
+    </section>
+
+    <div class="grid lg:grid-cols-2 gap-6 mt-6">
+        <section class="card p-6">
+            <h2 class="font-bold text-navy">Revenue by corridor</h2>
+            <p class="text-xs text-slate-500 mb-4">Fares kept after refunds.</p>
+            <div th:if="${#lists.isEmpty(revenueBars)}" class="text-sm text-slate-500">No bookings in this period.</div>
+            <div th:each="b : ${revenueBars}" class="mb-3">
+                <div class="flex justify-between text-xs"><span th:text="${b.label()}">TC-104</span>
+                    <b th:text="'₹' + ${#numbers.formatDecimal(b.value(), 1, 'COMMA', 0, 'POINT')}">₹</b></div>
+                <div class="h-3 bg-slate-100 rounded-full mt-1"><div class="h-3 bg-navy rounded-full" th:style="'width:' + ${b.percent()} + '%'"></div></div>
+            </div>
+        </section>
+
+        <section class="card p-6">
+            <h2 class="font-bold text-navy">Average occupancy by departure hour</h2>
+            <p class="text-xs text-slate-500" th:if="${peakHour != null}" th:text="'Busiest hour: ' + ${peakHour.key} + ':00 at ' + ${peakHour.value} + '% average load'">peak</p>
+            <svg viewBox="0 0 680 230" class="w-full mt-3">
+                <line x1="20" y1="200" x2="660" y2="200" stroke="#cbd5e1"/>
+                <line x1="20" y1="110" x2="660" y2="110" stroke="#e2e8f0" stroke-dasharray="4 4"/>
+                <line x1="20" y1="20" x2="660" y2="20" stroke="#e2e8f0" stroke-dasharray="4 4"/>
+                <text x="0" y="204" font-size="10" fill="#64748b">0</text>
+                <text x="0" y="114" font-size="10" fill="#64748b">50</text>
+                <text x="0" y="24" font-size="10" fill="#64748b">100</text>
+                <polyline th:attr="points=${occPoints}" fill="none" stroke="#f97316" stroke-width="3" stroke-linejoin="round"/>
+                <text th:each="e : ${occByHour}" th:x="${16 + (e.key - 6) * 40}" y="220" font-size="10" fill="#64748b" th:text="${e.key}">6</text>
+            </svg>
+        </section>
+
+        <section class="card p-6">
+            <h2 class="font-bold text-navy">Boardings by state / UT</h2>
+            <p class="text-xs text-slate-500 mb-4">Where passengers get on — useful for inter-state revenue sharing.</p>
+            <div class="flex h-6 rounded-full overflow-hidden text-[10px] text-white font-bold">
+                <div class="bg-navy flex items-center justify-center" th:style="'width:' + ${utPct} + '%'" th:text="${utPct} + '%'">UT</div>
+                <div class="bg-brand flex items-center justify-center" th:style="'width:' + ${pbPct} + '%'" th:text="${pbPct} + '%'">PB</div>
+                <div class="bg-green-600 flex items-center justify-center" th:style="'width:' + ${hrPct} + '%'" th:text="${hrPct} + '%'">HR</div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mt-4 text-sm">
+                <div><span class="inline-block w-3 h-3 rounded bg-navy"></span> Chandigarh (UT)</div>
+                <div><span class="inline-block w-3 h-3 rounded bg-brand"></span> Mohali (Punjab)</div>
+                <div><span class="inline-block w-3 h-3 rounded bg-green-600"></span> Panchkula (Haryana)</div>
+            </div>
+            <div class="text-xs text-slate-500 mt-3"><span th:each="e : ${byState}" th:text="${e.key} + ': ' + ${e.value} + '  '">x</span></div>
+        </section>
+
+        <section class="card p-6">
+            <h2 class="font-bold text-navy">Ladies-reserved seat utilisation</h2>
+            <p class="text-xs text-slate-500 mb-4">Share of the 8 ladies seats (rows 1–2) booked per trip.</p>
+            <div th:each="e : ${ladies}" class="mb-3">
+                <div class="flex justify-between text-xs"><span th:text="${e.key}">TC-104</span><b th:text="${e.value} + '%'">%</b></div>
+                <div class="h-3 bg-slate-100 rounded-full mt-1"><div class="h-3 bg-pink-500 rounded-full" th:style="'width:' + ${e.value} + '%'"></div></div>
+            </div>
+        </section>
+    </div>
+
+    <section class="card mt-6 overflow-x-auto">
+        <div class="p-5 border-b"><h2 class="font-bold text-navy">Corridor ledger</h2></div>
+        <table class="w-full text-sm">
+            <thead class="text-xs text-slate-500 uppercase bg-slate-50"><tr>
+                <th class="p-3 text-left">Route</th><th class="p-3 text-right">Trips</th><th class="p-3 text-right">Completed</th>
+                <th class="p-3 text-right">Avg occ.</th><th class="p-3 text-right">Passengers</th><th class="p-3 text-right">Gross</th>
+                <th class="p-3 text-right">Refunds</th><th class="p-3 text-right">Net</th></tr></thead>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(ledger)}"><td colspan="8" class="p-6 text-center text-slate-500">No data for this period.</td></tr>
+            <tr th:each="row : ${ledger}" class="border-t">
+                <td class="p-3"><b th:text="${row.route().code}">TC</b><br><span class="text-xs text-slate-500" th:text="${row.route().endpoints}">e</span></td>
+                <td class="p-3 text-right" th:text="${row.trips()}">0</td>
+                <td class="p-3 text-right" th:text="${row.completed()}">0</td>
+                <td class="p-3 text-right" th:text="${row.avgOccupancy()} + '%'">0</td>
+                <td class="p-3 text-right" th:text="${row.passengers()}">0</td>
+                <td class="p-3 text-right" th:text="'₹' + ${#numbers.formatDecimal(row.gross(), 1, 'COMMA', 0, 'POINT')}">₹</td>
+                <td class="p-3 text-right text-red-600" th:text="'₹' + ${#numbers.formatDecimal(row.refunds(), 1, 'COMMA', 0, 'POINT')}">₹</td>
+                <td class="p-3 text-right font-bold" th:text="'₹' + ${#numbers.formatDecimal(row.net(), 1, 'COMMA', 0, 'POINT')}">₹</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+<footer th:replace="~{fragments/admin :: adminFooter}"></footer>
+</body>
+</html>

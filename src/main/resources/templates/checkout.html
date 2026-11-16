@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Passenger details')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('book')}"></header>
+
+<div class="bg-brand-light border-b border-brand/20">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-2 text-sm text-brand-dark flex justify-between">
+        <span>⏳ Seat <b th:text="${form.seatNo}">4A</b> held for you: <b id="timer">10:00</b> — complete checkout before it expires.</span>
+        <span class="hidden md:inline">Seat is re-checked when you pay, so no one else can take it.</span>
+    </div>
+</div>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+    <!-- Steps -->
+    <div class="card p-4 flex items-center gap-4 text-sm">
+        <span class="flex items-center gap-2 text-green-700 font-semibold"><span class="w-7 h-7 rounded-full bg-green-600 text-white flex items-center justify-center">✓</span>Seat Selection</span>
+        <span class="flex-1 h-0.5 bg-navy"></span>
+        <span class="flex items-center gap-2 text-navy font-semibold"><span class="w-7 h-7 rounded-full bg-navy text-white flex items-center justify-center">2</span>Passenger Details</span>
+        <span class="flex-1 h-0.5 bg-slate-200"></span>
+        <span class="flex items-center gap-2 text-slate-500"><span class="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center">3</span>Payment &amp; Confirmation</span>
+    </div>
+
+    <form th:action="@{/checkout}" th:object="${form}" method="post" class="grid lg:grid-cols-3 gap-6 mt-6" novalidate>
+        <input type="hidden" th:field="*{tripId}">
+        <input type="hidden" th:field="*{seatNo}">
+        <input type="hidden" th:field="*{fromSeq}">
+        <input type="hidden" th:field="*{toSeq}">
+
+        <div class="lg:col-span-2 space-y-6">
+            <section class="card p-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold text-lg">🪪 Passenger Information</h2>
+                    <span class="chip bg-slate-100 text-slate-600">Single seat booking</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">Ticket details are issued as per Chandigarh Administration &amp; UT Transport Undertaking guidelines.</p>
+                <div class="grid md:grid-cols-3 gap-4 mt-5">
+                    <div class="md:col-span-2">
+                        <label class="label">Full name (as per Govt ID)</label>
+                        <input class="input" th:field="*{passengerName}">
+                        <p class="field-error" th:if="${#fields.hasErrors('passengerName')}" th:errors="*{passengerName}"></p>
+                    </div>
+                    <div>
+                        <label class="label">Age</label>
+                        <input class="input" type="number" min="1" max="120" th:field="*{passengerAge}">
+                        <p class="field-error" th:if="${#fields.hasErrors('passengerAge')}" th:errors="*{passengerAge}"></p>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label class="label">Gender</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label th:each="g : ${genders}" class="border rounded-xl py-2.5 text-center cursor-pointer text-sm font-semibold has-[:checked]:bg-navy has-[:checked]:text-white">
+                            <input type="radio" class="hidden" th:field="*{passengerGender}" th:value="${g}"><span th:text="${g.label}">Male</span>
+                        </label>
+                    </div>
+                    <p class="field-error" th:if="${#fields.hasErrors('passengerGender')}" th:errors="*{passengerGender}"></p>
+                </div>
+                <div class="mt-4">
+                    <label class="label">Passenger category</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label th:each="c : ${concessions}" class="border rounded-xl py-2.5 px-2 text-center cursor-pointer text-sm has-[:checked]:bg-navy has-[:checked]:text-white">
+                            <input type="radio" class="hidden concession" th:field="*{concession}" th:value="${c}">
+                            <b th:text="${c.label}">General</b><br>
+                            <span class="text-xs" th:text="${c.name() == 'GENERAL'} ? 'Full fare' : 'Valid ID needed at boarding'">Full fare</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="label">Mobile number</label>
+                        <div class="flex gap-2"><span class="input !w-auto">🇮🇳 +91</span><input class="input" th:field="*{passengerMobile}" maxlength="10"></div>
+                        <p class="text-xs text-slate-500 mt-1">Ticket SMS &amp; boarding pass link sent here</p>
+                        <p class="field-error" th:if="${#fields.hasErrors('passengerMobile')}" th:errors="*{passengerMobile}"></p>
+                    </div>
+                    <div>
+                        <label class="label">Email address (for GST tax receipt)</label>
+                        <input class="input" th:field="*{passengerEmail}">
+                        <p class="field-error" th:if="${#fields.hasErrors('passengerEmail')}" th:errors="*{passengerEmail}"></p>
+                    </div>
+                </div>
+                <label class="mt-4 flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-3 text-sm">
+                    <input type="checkbox" th:field="*{whatsappTicket}" class="mt-1 w-4 h-4 accent-green-600">
+                    <span><b>Send verified digital QR ticket &amp; alerts via WhatsApp</b><br>
+                        <span class="text-xs text-slate-600">Receive the QR ticket, live bus updates and the conductor's alert on your number.</span></span>
+                </label>
+                <div class="mt-4 border border-pink-200 bg-pink-50/50 rounded-xl p-4">
+                    <label class="flex items-start justify-between gap-3 text-sm">
+                        <span><b>🛡 Women's Night &amp; Transit Safety Guard</b> <span class="chip bg-white text-pink-700 border border-pink-200">Chandigarh Police 112 linked</span><br>
+                            <span class="text-xs text-slate-600">Share your live trip with a family member. They get the bus number, driver name and live location.</span></span>
+                        <input type="checkbox" th:field="*{womenSafety}" class="w-5 h-5 accent-pink-600 mt-1" onchange="document.getElementById('ec').classList.toggle('hidden', !this.checked)">
+                    </label>
+                    <div id="ec" class="mt-3" th:classappend="*{womenSafety} ? '' : 'hidden'">
+                        <label class="label">Emergency contact mobile (+91)</label>
+                        <input class="input" th:field="*{emergencyContact}" maxlength="10" placeholder="98140 11200">
+                        <p class="field-error" th:if="${#fields.hasErrors('emergencyContact')}" th:errors="*{emergencyContact}"></p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card p-6">
+                <h2 class="font-bold text-lg">💳 Select Payment Option</h2>
+                <p class="text-xs text-slate-500">Choose how to pay. (In this project payments are simulated; a real app would call a payment gateway such as Razorpay.)</p>
+                <div class="space-y-3 mt-4">
+                    <label class="flex items-center justify-between border rounded-xl p-4 cursor-pointer has-[:checked]:border-navy has-[:checked]:bg-navy-light">
+                        <span class="flex items-center gap-3"><input type="radio" th:field="*{paymentMethod}" value="UPI" class="accent-navy">
+                            <span><b>UPI (Fastest)</b> <span class="chip bg-green-100 text-green-700">Recommended</span><br><span class="text-xs text-slate-500">GPay · PhonePe · Paytm UPI · BHIM</span></span></span>
+                        <span class="text-2xl">▣</span>
+                    </label>
+                    <label class="flex items-center justify-between border rounded-xl p-4 cursor-pointer has-[:checked]:border-navy has-[:checked]:bg-navy-light">
+                        <span class="flex items-center gap-3"><input type="radio" th:field="*{paymentMethod}" value="WALLET" class="accent-navy">
+                            <span><b>TriCity Smart Mobility Wallet</b><br><span class="text-xs text-slate-500">Available balance:
+                                <b th:text="'₹' + ${#numbers.formatDecimal(wallet, 1, 2)}">₹250.00</b>
+                                <span th:if="${wallet.compareTo(fare.total()) >= 0}" class="text-green-600">(sufficient for this journey)</span>
+                                <span th:if="${wallet.compareTo(fare.total()) < 0}" class="text-red-600">(not enough)</span></span></span></span>
+                        <span class="text-2xl">👛</span>
+                    </label>
+                    <label class="flex items-center justify-between border rounded-xl p-4 cursor-pointer has-[:checked]:border-navy has-[:checked]:bg-navy-light">
+                        <span class="flex items-center gap-3"><input type="radio" th:field="*{paymentMethod}" value="CARD" class="accent-navy">
+                            <span><b>Debit / Credit Card</b><br><span class="text-xs text-slate-500">RuPay · Visa · Mastercard</span></span></span>
+                        <span class="text-2xl">💳</span>
+                    </label>
+                    <label class="flex items-center justify-between border rounded-xl p-4 cursor-pointer has-[:checked]:border-navy has-[:checked]:bg-navy-light">
+                        <span class="flex items-center gap-3"><input type="radio" th:field="*{paymentMethod}" value="NET_BANKING" class="accent-navy">
+                            <span><b>Net Banking</b><br><span class="text-xs text-slate-500">SBI, HDFC, PNB, ICICI, Axis &amp; 48 other banks</span></span></span>
+                        <span class="text-2xl">🏛</span>
+                    </label>
+                </div>
+            </section>
+        </div>
+
+        <!-- Summary -->
+        <aside class="space-y-4">
+            <div class="card p-5 sticky top-20">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="text-xs font-bold text-brand-dark">SELECTED SERVICE</div>
+                        <div class="font-bold" th:text="'Coach ' + ${trip.route.code} + ' Express'">Coach TC-104 Express</div>
+                        <div class="text-xs text-slate-500" th:text="${trip.bus.regNo}">CH01-GA-2041</div>
+                    </div>
+                    <span class="chip bg-green-100 text-green-700" th:text="${trip.bus.type.label}">100% Electric</span>
+                </div>
+                <div class="mt-4 text-sm">
+                    <div class="text-xs text-slate-500" th:text="'📅 ' + ${#temporals.format(trip.timeAt(fromStop), 'EEE, dd MMM yyyy')}">Today</div>
+                    <div class="mt-3 border-l-2 border-dashed border-navy pl-4 space-y-4">
+                        <div><div class="font-bold" th:text="${#temporals.format(trip.timeAt(fromStop), 'hh:mm a')}">07:45 AM</div>
+                            <div th:text="${fromStop.stop.name}">Kharar</div><div class="text-xs text-slate-500" th:text="${trip.bay}">Bay 2</div></div>
+                        <div class="text-xs text-slate-500" th:text="${toStop.minutesFromStart - fromStop.minutesFromStart} + ' mins'">35 mins</div>
+                        <div><div class="font-bold" th:text="${#temporals.format(trip.timeAt(toStop), 'hh:mm a')}">08:20 AM</div>
+                            <div th:text="${toStop.stop.name}">Sector 17 ISBT</div></div>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center gap-3 bg-navy-light rounded-xl p-3">
+                    <span class="w-11 h-11 rounded-lg bg-navy text-white font-extrabold flex items-center justify-center" th:text="${form.seatNo}">4A</span>
+                    <span class="text-sm"><b>Reserved seat</b><br><span class="text-xs text-slate-500">Front cabin · AC comfort</span></span>
+                </div>
+                <div class="mt-4 text-sm space-y-1.5">
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Fare computation</div>
+                    <div class="flex justify-between"><span th:text="'Base fare (' + ${fromStop.stop.name} + ' → ' + ${toStop.stop.name} + ')'">Base</span><span id="fBase" th:text="'₹' + ${fare.base()}">42.86</span></div>
+                    <div class="flex justify-between"><span>CGST</span><span id="fCgst" th:text="'₹' + ${fare.cgst()}">1.07</span></div>
+                    <div class="flex justify-between"><span>SGST</span><span id="fSgst" th:text="'₹' + ${fare.sgst()}">1.07</span></div>
+                    <div class="flex justify-between text-green-700"><span>Convenience fee</span><span>₹0.00 (waived)</span></div>
+                </div>
+                <div class="mt-4 bg-slate-900 text-white rounded-xl p-4 flex justify-between items-center">
+                    <span class="text-xs">TOTAL PAYABLE<br><span class="text-white/60">inclusive of all taxes</span></span>
+                    <span class="text-3xl font-extrabold" id="fTotal" th:text="'₹' + ${fare.total()}">₹45.00</span>
+                </div>
+                <button id="payBtn" class="btn-primary w-full mt-4 text-base" th:text="'Pay ₹' + ${#numbers.formatDecimal(fare.total(), 1, 0)} + ' & Confirm Seat'">Pay ₹45 &amp; Confirm</button>
+                <ul class="text-xs text-slate-500 mt-3 space-y-1">
+                    <li>✓ 90% refund if cancelled 2+ hours before departure</li>
+                    <li>✓ Digital QR ticket issued instantly</li>
+                    <li>✓ Live GPS tracking of your bus</li>
+                </ul>
+            </div>
+        </aside>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script th:inline="javascript">
+    const fares = /*[[${fareTable}]]*/ {};
+    function showFare(kind) {
+        const f = fares[kind];
+        if (!f) return;
+        document.getElementById('fBase').innerText = '₹' + Number(f.base).toFixed(2);
+        document.getElementById('fCgst').innerText = '₹' + Number(f.cgst).toFixed(2);
+        document.getElementById('fSgst').innerText = '₹' + Number(f.sgst).toFixed(2);
+        document.getElementById('fTotal').innerText = '₹' + Number(f.total).toFixed(2);
+        document.getElementById('payBtn').innerText = 'Pay ₹' + Math.round(f.total) + ' & Confirm Seat';
+    }
+    document.querySelectorAll('input.concession').forEach(r => {
+        r.addEventListener('change', () => showFare(r.value));
+        if (r.checked) showFare(r.value);
+    });
+</script>
+<script>
+    let left = 600;
+    const t = document.getElementById('timer');
+    setInterval(() => {
+        if (left <= 0) { t.innerText = 'expired – please reselect'; return; }
+        left--; t.innerText = String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
+    }, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Routes & Stops')}"></head>
+<body>
+<header th:replace="~{fragments/admin :: adminNav('routes')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-6">
+    <div class="flex flex-wrap justify-between items-end gap-3">
+        <div>
+            <div class="text-xs text-slate-500">Admin Console › Corridor Management › Routes &amp; Stops</div>
+            <h1 class="text-3xl font-extrabold text-navy">Routes &amp; Stops Configuration</h1>
+        </div>
+        <button type="button" class="btn-primary" onclick="openModal('newCorridor')">+ Create New Corridor</button>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6 mt-6">
+        <!-- Route list -->
+        <aside class="card p-4 h-fit">
+            <form method="get" class="mb-3"><input name="q" th:value="${q}" class="input text-sm" placeholder="🔍 Filter corridors, route code…"></form>
+            <div class="space-y-2 max-h-[70vh] overflow-y-auto">
+                <a th:each="r : ${routes}" th:href="@{/admin/routes(id=${r.id}, q=${q})}" class="block rounded-xl p-3 border"
+                   th:classappend="${route != null and r.id == route.id} ? 'border-navy bg-navy-light border-l-4' : 'hover:bg-slate-50'">
+                    <div class="flex items-center gap-2"><span class="chip bg-navy text-white" th:text="${r.code}">TC-104</span>
+                        <span th:if="${r.returnDirection}" class="chip bg-slate-100 text-[10px]">Return</span></div>
+                    <div class="font-semibold text-sm mt-1" th:text="${r.endpoints}">route</div>
+                    <div class="grid grid-cols-3 text-[11px] text-slate-500 mt-1">
+                        <span th:text="${#numbers.formatDecimal(r.distanceKm, 1, 1)} + ' km'">19 km</span>
+                        <span th:text="${#lists.size(r.stops)} + ' stops'">5 stops</span>
+                        <span th:text="'every ' + ${r.frequencyMinutes} + ' min'">10 min</span>
+                    </div>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Selected route -->
+        <section class="lg:col-span-2" th:if="${route != null}">
+            <div class="card p-6">
+                <div class="flex flex-wrap justify-between gap-3">
+                    <div><span class="chip bg-navy text-white" th:text="${route.code}">TC-104</span>
+                        <h2 class="text-2xl font-bold text-navy mt-2" th:text="${route.endpoints}">route</h2>
+                        <p class="text-sm text-slate-500" th:text="${route.name} + ' · ' + ${route.tagline}">name</p></div>
+                    <div class="flex gap-2 h-fit">
+                        <button type="button" class="btn-primary text-sm" onclick="openModal('addStop')">+ Add Stop</button>
+                        <a th:if="${route.returnRoute != null}" th:href="@{/admin/routes(id=${route.returnRoute.id})}" class="btn-light text-sm">⇄ Return route</a>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3 mt-4 text-sm">
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">Total distance</div><b th:text="${#numbers.formatDecimal(route.distanceKm, 1, 1)} + ' km'">19</b></div>
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">Stops</div><b th:text="${#lists.size(route.stops)}">5</b></div>
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">End-to-end time</div><b th:text="${route.lastStop.minutesFromStart} + ' min'">35</b></div>
+                </div>
+
+                <!-- route line -->
+                <div class="relative mt-8 mb-2 px-4">
+                    <div class="absolute top-3 left-8 right-8 h-1 bg-navy/20 rounded"></div>
+                    <div class="flex justify-between relative">
+                        <div th:each="s : ${route.stops}" class="flex flex-col items-center w-20 text-center">
+                            <span class="w-7 h-7 rounded-full border-4 bg-white text-[10px] font-bold flex items-center justify-center"
+                                  th:classappend="${s.seq == 1 or s.seq == route.lastStop.seq} ? 'border-brand text-brand' : 'border-navy text-navy'" th:text="${s.seq}">1</span>
+                            <span class="text-[11px] mt-1 leading-tight" th:text="${s.stop.name}">stop</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4 overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                    <tr><th class="p-3 text-left">#</th><th class="p-3 text-left">Stop</th><th class="p-3 text-left">City / state</th>
+                        <th class="p-3 text-left">Km from start</th><th class="p-3 text-left">Time from prev.</th>
+                        <th class="p-3 text-left">Fare from origin (peak)</th><th class="p-3 text-left">Bookings using stop</th><th class="p-3"></th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="s, st : ${route.stops}" class="border-t">
+                        <td class="p-3 font-bold" th:classappend="${st.last} ? 'text-brand-dark' : ''" th:text="${s.seq < 10 ? '0' + s.seq : s.seq}">01</td>
+                        <td class="p-3"><b th:text="${s.stop.name}">stop</b></td>
+                        <td class="p-3"><span class="chip bg-navy-light text-navy" th:text="${s.stop.city} + ' (' + ${s.stop.state} + ')'">city</span></td>
+                        <td class="p-3" th:text="${#numbers.formatDecimal(s.kmFromStart, 1, 1)} + ' km'">0 km</td>
+                        <td class="p-3" th:text="${st.first} ? '—' : ('+' + ${s.minutesFromStart - route.stops[st.index - 1].minutesFromStart} + ' min')">+6</td>
+                        <td class="p-3 font-semibold" th:text="${st.first} ? '—' : ('₹' + ${#numbers.formatDecimal(fares.get(s.seq), 1, 0)})">₹35</td>
+                        <td class="p-3 text-xs" th:text="${usage.get(s.seq)}">120</td>
+                        <td class="p-3 text-right">
+                            <form th:if="${!st.first and !st.last}" th:action="@{/admin/routes/{id}/stops/{seq}/delete(id=${route.id}, seq=${s.seq})}" method="post"
+                                  onsubmit="return confirm('Remove this stop from the route?')">
+                                <button class="text-red-600" title="Remove stop">🗑</button></form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">ⓘ A stop can be removed only if no booking boards or drops there. When a stop is added, existing bookings are renumbered automatically so they keep the same physical stops.</p>
+        </section>
+    </div>
+</main>
+
+<!-- Add stop modal -->
+<div id="addStop" th:if="${route != null}" class="fixed inset-0 bg-slate-900/50 z-50 hidden items-center justify-center p-4">
+    <form th:action="@{/admin/routes/{id}/stops(id=${route.id})}" method="post" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+        <div class="flex justify-between items-start p-5 border-b">
+            <div><h3 class="text-lg font-bold" th:text="'📍 Add Stop to Route ' + ${route.code}">Add stop</h3>
+                <p class="text-xs text-slate-500">Register a new transit stop along this corridor.</p></div>
+            <button type="button" onclick="closeModal('addStop')" class="text-xl">×</button>
+        </div>
+        <div class="p-5 space-y-4">
+            <div><label class="label">Stop name</label><input name="name" class="input" required placeholder="e.g. Mohali Phase 8 Industrial Area" list="stopNames">
+                <datalist id="stopNames"><option th:each="s : ${stops}" th:value="${s.name}"></option></datalist>
+                <p class="text-xs text-slate-500 mt-1">Pick an existing stop or type a new name.</p></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="label">City</label><select name="city" class="input"><option th:each="c : ${cities}" th:text="${c}">c</option></select></div>
+                <div><label class="label">State / territory</label><select name="state" class="input"><option th:each="c : ${states}" th:text="${c}">c</option></select></div>
+            </div>
+            <div><label class="label">Position in route sequence</label>
+                <select name="afterSeq" class="input">
+                    <option th:each="s : ${route.stops}" th:value="${s.seq}" th:selected="${s.seq == 1}"
+                            th:text="'Insert after: Stop ' + ${s.seq} + ' – ' + ${s.stop.name} + ' (' + ${s.kmFromStart} + ' km, ' + ${s.minutesFromStart} + ' min)'">after</option>
+                </select></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="label">Km from first stop</label><input name="km" type="number" step="0.1" min="0.1" class="input" required></div>
+                <div><label class="label">Minutes from first stop</label><input name="minutes" type="number" min="1" class="input" required></div>
+            </div>
+            <p class="text-xs text-slate-500 bg-slate-50 rounded-lg p-2">Values must lie between the stops before and after. Fares are worked out from km automatically.</p>
+        </div>
+        <div class="flex justify-end gap-2 p-5 border-t bg-slate-50 rounded-b-2xl">
+            <button type="button" class="btn-light" onclick="closeModal('addStop')">Cancel</button>
+            <button class="btn-primary">✓ Add Stop to Corridor</button>
+        </div>
+    </form>
+</div>
+
+<!-- New corridor modal -->
+<div id="newCorridor" class="fixed inset-0 bg-slate-900/50 z-50 hidden items-center justify-center p-4">
+    <form th:action="@{/admin/routes/new}" method="post" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+        <div class="flex justify-between items-start p-5 border-b">
+            <div><h3 class="text-lg font-bold">＋ Create New Corridor</h3>
+                <p class="text-xs text-slate-500">The return direction is created automatically. Add middle stops afterwards.</p></div>
+            <button type="button" onclick="closeModal('newCorridor')" class="text-xl">×</button>
+        </div>
+        <div class="p-5 space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="label">Route code</label><input name="code" class="input" placeholder="TC-108" required pattern="TC-[0-9]{3}"></div>
+                <div><label class="label">Peak frequency (min)</label><input name="frequency" type="number" min="3" value="10" class="input"></div>
+            </div>
+            <div><label class="label">Name (optional)</label><input name="name" class="input" placeholder="Mohali Airport – PGI"></div>
+            <div><label class="label">Tagline (optional)</label><input name="tagline" class="input" placeholder="Airport Express Link"></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="label">First stop</label><select name="firstStopId" class="input"><option th:each="s : ${stops}" th:value="${s.id}" th:text="${s.name}">s</option></select></div>
+                <div><label class="label">Last stop</label><select name="lastStopId" class="input"><option th:each="s, st : ${stops}" th:value="${s.id}" th:text="${s.name}" th:selected="${st.index == 1}">s</option></select></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="label">Distance (km)</label><input name="km" type="number" step="0.1" min="0.5" class="input" required></div>
+                <div><label class="label">Travel time (min)</label><input name="minutes" type="number" min="1" class="input" required></div>
+            </div>
+        </div>
+        <div class="flex justify-end gap-2 p-5 border-t bg-slate-50 rounded-b-2xl">
+            <button type="button" class="btn-light" onclick="closeModal('newCorridor')">Cancel</button>
+            <button class="btn-primary">Create Corridor</button>
+        </div>
+    </form>
+</div>
+
+<footer th:replace="~{fragments/admin :: adminFooter}"></footer>
+<script>
+    function openModal(id) { const m = document.getElementById(id); m.classList.remove('hidden'); m.classList.add('flex'); }
+    function closeModal(id) { const m = document.getElementById(id); m.classList.add('hidden'); m.classList.remove('flex'); }
+</script>
+</body>
+</html>

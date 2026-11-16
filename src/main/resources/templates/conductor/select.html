@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Conductor ETM')}"></head>
+<body class="bg-slate-100">
+<main class="max-w-md mx-auto p-4">
+    <div class="bg-navy text-white rounded-2xl p-5">
+        <div class="text-xs text-white/70">TRICITY CONNECT · CONDUCTOR ETM</div>
+        <h1 class="text-2xl font-extrabold">Select your trip</h1>
+        <p class="text-sm text-white/80" th:text="${#temporals.format(#temporals.createNow(), 'EEEE, dd MMM yyyy')}">today</p>
+    </div>
+    <div class="flex justify-between text-xs mt-3 px-1">
+        <a th:href="@{/}" class="text-navy font-semibold">← Passenger site</a>
+        <form th:action="@{/logout}" method="post"><button class="text-red-600 font-semibold">Logout</button></form>
+    </div>
+    <div th:if="${#lists.isEmpty(trips)}" class="card p-6 mt-4 text-center text-slate-500">No trips scheduled today.</div>
+    <a th:each="t : ${trips}" th:href="@{/conductor(tripId=${t.id})}"
+       class="card p-4 mt-3 flex justify-between items-center active:bg-slate-50"
+       th:classappend="${t.status.name() == 'CANCELLED'} ? 'opacity-50' : ''">
+        <div>
+            <div class="font-bold text-navy" th:text="${t.route.code} + ' · ' + ${#temporals.format(t.departureTime, 'hh:mm a')}">TC-104 07:45</div>
+            <div class="text-xs text-slate-500" th:text="${t.route.endpoints}">endpoints</div>
+            <div class="text-xs text-slate-500" th:text="'Bus ' + ${t.bus.regNo} + ' · Bay ' + ${t.bay}">bus</div>
+        </div>
+        <span class="chip" th:classappend="${t.disrupted} ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'"
+              th:text="${t.disrupted} ? 'DISRUPTED' : ${t.status}">status</span>
+    </a>
+</main>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<!--
+  Shared pieces used by every page:
+    head(title)      - <head> with Tailwind CSS, Inter font and brand colours
+    navbar(active)   - top navigation bar (active = home | book | passes | bookings | alerts)
+    flash            - green/red message boxes
+    footer           - page footer
+  When you export a page from Google Stitch, keep its <main> content and use these fragments
+  for the head, navbar and footer so every page stays consistent.
+-->
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' — TriCity Connect'">TriCity Connect</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {DEFAULT: '#1E3A8A', dark: '#172C6B', light: '#E8EDFB'},
+                        brand: {DEFAULT: '#F97316', dark: '#EA580C', light: '#FFF1E6'}
+                    },
+                    fontFamily: {sans: ['Inter', 'system-ui', 'sans-serif']}
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script th:src="@{/js/motion.js}" defer></script>
+</head>
+<body>
+
+<header th:fragment="navbar(active)" class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
+        <a th:href="@{/}" class="flex items-center shrink-0">
+            <img th:src="@{/images/logo.png}" alt="TriCity Connect" class="h-9 w-auto">
+        </a>
+
+        <nav class="hidden md:flex items-center gap-1 bg-slate-100 rounded-xl p-1 text-sm font-medium">
+            <a th:href="@{/}" class="px-4 py-2 rounded-lg transition"
+               th:classappend="${active == 'home'} ? 'bg-navy text-white shadow' : 'text-slate-600 hover:text-navy'"
+               th:text="#{nav.home}">Home</a>
+            <a th:href="@{/search}" class="px-4 py-2 rounded-lg transition"
+               th:classappend="${active == 'book'} ? 'bg-navy text-white shadow' : 'text-slate-600 hover:text-navy'"
+               th:text="#{nav.book}">Book a Seat</a>
+            <a th:href="@{/passes}" class="px-4 py-2 rounded-lg transition"
+               th:classappend="${active == 'passes'} ? 'bg-navy text-white shadow' : 'text-slate-600 hover:text-navy'"
+               th:text="#{nav.passes}">My Passes</a>
+            <a th:href="@{/bookings}" class="px-4 py-2 rounded-lg transition"
+               th:classappend="${active == 'bookings'} ? 'bg-navy text-white shadow' : 'text-slate-600 hover:text-navy'"
+               th:text="#{nav.bookings}">My Bookings</a>
+            <a th:href="@{/alerts}" class="px-4 py-2 rounded-lg transition"
+               th:classappend="${active == 'alerts'} ? 'bg-navy text-white shadow' : 'text-slate-600 hover:text-navy'"
+               th:text="#{nav.alerts}">Alerts</a>
+            <a th:href="@{/help}" class="px-4 py-2 rounded-lg transition"
+               th:classappend="${active == 'help'} ? 'bg-navy text-white shadow' : 'text-slate-600 hover:text-navy'"
+               th:text="#{nav.help}">Help</a>
+            <a th:if="${currentUser != null and currentUser.role.name() == 'ADMIN'}" th:href="@{/admin}"
+               class="px-4 py-2 rounded-lg text-brand-dark font-semibold hover:bg-brand-light">Admin</a>
+            <a th:if="${currentUser != null and currentUser.role.name() == 'CONDUCTOR'}" th:href="@{/conductor}"
+               class="px-4 py-2 rounded-lg text-brand-dark font-semibold hover:bg-brand-light">ETM</a>
+        </nav>
+
+        <div class="flex items-center gap-3">
+            <div class="hidden sm:flex items-center text-xs font-semibold bg-navy-light rounded-full px-2 py-1">
+                <a href="?lang=en" class="px-1.5" th:classappend="${#locale.language == 'en'} ? 'text-navy' : 'text-slate-500'">EN</a>
+                <span class="text-slate-300">|</span>
+                <a href="?lang=hi" class="px-1.5" th:classappend="${#locale.language == 'hi'} ? 'text-navy' : 'text-slate-500'">हिंदी</a>
+                <span class="text-slate-300">|</span>
+                <a href="?lang=pa" class="px-1.5" th:classappend="${#locale.language == 'pa'} ? 'text-navy' : 'text-slate-500'">ਪੰਜਾਬੀ</a>
+            </div>
+            <a th:href="@{/alerts}" class="relative p-2 text-slate-600 hover:text-navy" title="Alerts">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0"/></svg>
+                <span th:if="${alertCount != null and alertCount > 0}" class="absolute top-1 right-1 w-2 h-2 bg-brand rounded-full"></span>
+            </a>
+
+            <div th:if="${currentUser != null}" class="relative group">
+                <button class="flex items-center gap-2">
+                    <span class="w-9 h-9 rounded-full bg-navy text-white flex items-center justify-center text-sm font-bold"
+                          th:text="${currentUser.initials}">HS</span>
+                    <span class="hidden lg:block text-left leading-tight">
+                        <span class="block text-sm font-semibold text-slate-800" th:text="${currentUser.firstName}">Harpreet</span>
+                        <span class="block text-xs text-slate-500">Wallet ₹<span th:text="${#numbers.formatDecimal(currentUser.walletBalance, 1, 2)}">250.00</span></span>
+                    </span>
+                </button>
+                <div class="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-2 hidden group-hover:block group-focus-within:block">
+                    <div class="px-4 py-2 text-xs text-slate-500 border-b">
+                        <div class="font-semibold text-slate-800" th:text="${currentUser.fullName}">Harpreet Singh</div>
+                        <div th:text="'+91 ' + ${currentUser.mobile}">+91 98765 43210</div>
+                    </div>
+                    <a th:href="@{/profile}" class="block px-4 py-2 text-sm hover:bg-slate-50">Profile &amp; Wallet</a>
+                    <a th:href="@{/bookings}" class="block px-4 py-2 text-sm hover:bg-slate-50">My Bookings</a>
+                    <a th:href="@{/passes}" class="block px-4 py-2 text-sm hover:bg-slate-50">My Passes</a>
+                    <form th:action="@{/logout}" method="post">
+                        <button class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50" th:text="#{nav.logout}">Logout</button>
+                    </form>
+                </div>
+            </div>
+            <a th:if="${currentUser == null}" th:href="@{/login}"
+               class="bg-navy text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-navy-dark" th:text="#{nav.login}">Login</a>
+        </div>
+    </div>
+</header>
+
+<div th:fragment="flash">
+    <div th:if="${success != null}" class="max-w-7xl mx-auto px-4 lg:px-6 mt-4">
+        <div class="flex items-start gap-3 bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 text-sm">
+            <span class="font-bold">✓</span><span th:text="${success}">Done</span>
+        </div>
+    </div>
+    <div th:if="${error != null}" class="max-w-7xl mx-auto px-4 lg:px-6 mt-4">
+        <div class="flex items-start gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-sm">
+            <span class="font-bold">!</span><span th:text="${error}">Something went wrong</span>
+        </div>
+    </div>
+</div>
+
+<footer th:fragment="footer" class="bg-white border-t border-slate-200 mt-16">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-10 grid md:grid-cols-3 gap-8 text-sm">
+        <div>
+            <img th:src="@{/images/logo.png}" alt="TriCity Connect" class="h-9 mb-3">
+            <p class="text-slate-500" th:text="#{footer.serving}">Serving Chandigarh • Mohali • Panchkula</p>
+            <div class="flex gap-2 mt-4 text-xs">
+                <span class="border rounded-full px-3 py-1 text-slate-600">UT Transport Dept. Verified</span>
+                <span class="border rounded-full px-3 py-1 text-slate-600">256-Bit SSL Encrypted</span>
+            </div>
+        </div>
+        <div>
+            <h4 class="font-semibold text-slate-800 mb-3">Helpline &amp; Support</h4>
+            <div class="bg-navy-light rounded-xl px-4 py-3 mb-2">
+                <div class="font-bold text-navy">Dial 112 / 1800-TRICITY</div>
+                <div class="text-xs text-slate-500">24×7 Emergency Transit Assistance</div>
+            </div>
+            <div class="text-slate-500">support@tricityconnect.gov.in</div>
+        </div>
+        <div>
+            <h4 class="font-semibold text-slate-800 mb-3">Quick Transit Links</h4>
+            <ul class="space-y-1.5 text-slate-500">
+                <li><a th:href="@{/search}" class="hover:text-navy">Route Network</a></li>
+                <li><a th:href="@{/passes/new}" class="hover:text-navy">Commuter Passes</a></li>
+                <li><a th:href="@{/bookings}" class="hover:text-navy">Refund &amp; Cancellation Policy</a></li>
+                <li><a th:href="@{/alerts}" class="hover:text-navy">Service Alerts</a></li>
+                <li><a th:href="@{/help}" class="hover:text-navy">Help &amp; FAQs</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="border-t border-slate-100 py-4 text-center text-xs text-slate-400">
+        © <span th:text="${#temporals.format(#temporals.createNow(), 'yyyy')}">2026</span>
+        TriCity Connect — a college project on the Chandigarh Transport Undertaking (CTU) Tricity network.
+    </div>
+</footer>
+</body>
+</html>

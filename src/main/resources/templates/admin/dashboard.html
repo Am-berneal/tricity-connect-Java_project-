@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Admin Dashboard')}"></head>
+<body>
+<header th:replace="~{fragments/admin :: adminNav('dashboard')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<div class="bg-navy-light border-b border-navy/10">
+    <div class="max-w-[1400px] mx-auto px-4 lg:px-6 py-2 text-xs flex flex-wrap justify-between gap-2 text-navy">
+        <span><span class="chip bg-navy text-white">● ICCC CENTRAL CONSOLE</span> Sector 17 Urban Mobility Command Unit</span>
+        <span th:text="'Active fleet today: ' + ${activeFleet} + ' e-buses · Updated ' + ${#temporals.format(#temporals.createNow(), 'hh:mm a')}">Active fleet</span>
+    </div>
+</div>
+
+<main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-6">
+    <section class="card p-6 flex flex-wrap justify-between items-start gap-4">
+        <div>
+            <span class="chip bg-green-100 text-green-700">● Timetable feed live</span>
+            <h1 class="text-3xl font-extrabold text-navy mt-2">TriCity Transit Command &amp; Fleet Operations</h1>
+            <p class="text-slate-500 text-sm">Capacity balancing, corridor load factors and dispatching across Chandigarh, Mohali &amp; Panchkula.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a th:href="@{/admin/reports/export.csv}" class="btn-light text-sm">⬇ Export Fleet Report</a>
+            <a th:href="@{/admin/disruptions}" class="bg-brand-light text-brand-dark font-semibold rounded-lg px-4 py-2 text-sm">📢 Broadcast Advisory</a>
+            <a th:href="@{/admin/trips}" class="btn-navy text-sm">◇ Fleet Override</a>
+        </div>
+    </section>
+
+    <!-- Stat cards -->
+    <section class="grid md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+        <div class="card p-5">
+            <div class="flex justify-between text-sm text-slate-500">Seats booked today <span>💺</span></div>
+            <div class="text-4xl font-extrabold text-navy mt-1" th:text="${#numbers.formatInteger(seatsBookedToday, 1, 'COMMA')}">1,284</div>
+            <span class="chip mt-2" th:classappend="${bookingsChange >= 0} ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                  th:text="(${bookingsChange >= 0} ? '↗ +' : '↘ ') + ${bookingsChange} + '% vs yesterday'">+14%</span>
+            <div class="text-xs text-slate-500 mt-1" th:text="'Across ' + ${tripsToday} + ' scheduled departures'">across</div>
+        </div>
+        <div class="card p-5">
+            <div class="flex justify-between text-sm text-slate-500">Active commuter passes <span>🎫</span></div>
+            <div class="text-4xl font-extrabold text-navy mt-1" th:text="${activePasses}">642</div>
+            <div class="text-xs text-slate-500 mt-3">Monthly &amp; quarterly verified passes</div>
+        </div>
+        <div class="card p-5">
+            <div class="flex justify-between text-sm text-slate-500">Average corridor occupancy <span>◔</span></div>
+            <div class="text-4xl font-extrabold text-brand-dark mt-1" th:text="${avgOccupancy} + '%'">78%</div>
+            <div class="h-2 bg-slate-100 rounded-full mt-3"><div class="h-2 bg-brand rounded-full" th:style="'width:' + ${avgOccupancy} + '%'"></div></div>
+            <div class="text-xs text-slate-500 mt-1">Peak-segment load today · target 75–85%</div>
+        </div>
+        <div class="card p-5">
+            <div class="flex justify-between text-sm text-slate-500">Active disruptions <span>⚠</span></div>
+            <div class="text-4xl font-extrabold mt-1" th:classappend="${#lists.isEmpty(activeDisruptions)} ? 'text-green-700' : 'text-red-600'"
+                 th:text="${#lists.size(activeDisruptions)}">1</div>
+            <div th:each="d : ${activeDisruptions}" class="text-xs mt-1"><span class="chip bg-red-100 text-red-700" th:text="${d.code}">code</span>
+                <span class="text-slate-500" th:text="${d.routeCodes}">routes</span></div>
+            <a th:href="@{/admin/disruptions}" class="text-xs text-navy font-semibold">Manage →</a>
+        </div>
+    </section>
+
+    <section class="grid xl:grid-cols-3 gap-6 mt-6">
+        <!-- Heatmap -->
+        <div class="xl:col-span-2 card p-6 overflow-x-auto">
+            <div class="flex justify-between items-start">
+                <div><h2 class="text-lg font-bold text-navy">▦ Corridor Hourly Occupancy Heatmap</h2>
+                    <p class="text-xs text-slate-500">Average peak-segment load by departure hour, last 7 days, both directions.</p></div>
+                <span class="chip bg-navy text-white">Seat fill rate %</span>
+            </div>
+            <div class="flex flex-wrap gap-3 text-[11px] text-slate-500 mt-3">
+                Density: <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-orange-50 border"></span>0–25%</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-orange-200"></span>26–50%</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-orange-400"></span>51–75%</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-orange-600"></span>76–95%</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-red-800"></span>96–100% sold out</span>
+            </div>
+            <table class="mt-4 text-xs w-full">
+                <thead><tr><th class="text-left text-slate-500 font-semibold pb-2 pr-2">Route / corridor</th>
+                    <th th:each="h : ${hours}" class="text-slate-500 font-medium pb-2" th:text="${h > 12 ? (h - 12) + 'P' : (h == 12 ? '12P' : h + 'A')}">6A</th></tr></thead>
+                <tbody>
+                <tr th:each="row : ${heat}">
+                    <td class="pr-3 py-1"><b class="text-navy" th:text="${row.route().code}">TC-104</b><br>
+                        <span class="text-[10px] text-slate-500" th:text="${row.route().endpoints}">route</span></td>
+                    <td th:each="v : ${row.cells()}" class="p-0.5">
+                        <div class="h-8 rounded flex items-center justify-center font-semibold"
+                             th:classappend="${v == null} ? 'bg-slate-50 text-slate-300' : (${v > 95} ? 'bg-red-800 text-white' : (${v > 75} ? 'bg-orange-600 text-white' : (${v > 50} ? 'bg-orange-400 text-white' : (${v > 25} ? 'bg-orange-200 text-orange-900' : 'bg-orange-50 text-orange-800'))))"
+                             th:text="${v == null} ? '·' : ${v}">42</div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Dispatch AI -->
+        <div class="card p-6">
+            <div class="flex justify-between"><h2 class="text-lg font-bold text-navy">🤖 Dispatch Advisor</h2>
+                <span class="chip bg-brand-light text-brand-dark">Civic optimisation</span></div>
+            <p class="text-xs text-slate-500">Recommendations worked out from the heatmap (load-factor rules).</p>
+            <div th:if="${#lists.isEmpty(recommendations)}" class="text-sm text-slate-500 mt-4">All corridors are balanced. 👍</div>
+            <div th:each="r : ${recommendations}" class="mt-4 rounded-xl border p-4"
+                 th:classappend="${r.level().startsWith('CAPACITY')} ? 'border-red-200 bg-red-50/50' : 'border-navy/10 bg-navy-light/50'">
+                <span class="chip" th:classappend="${r.level().startsWith('CAPACITY')} ? 'bg-brand-dark text-white' : 'bg-navy text-white'" th:text="${r.level()}">LEVEL</span>
+                <h3 class="font-bold mt-2" th:text="${r.title()}">title</h3>
+                <p class="text-xs text-slate-600 mt-1" th:text="${r.detail()}">detail</p>
+                <a th:href="@{/admin/trips}" class="block text-center mt-3 rounded-lg py-2 text-sm font-semibold"
+                   th:classappend="${r.level().startsWith('CAPACITY')} ? 'bg-brand-dark text-white' : 'bg-navy text-white'"
+                   th:text="${r.level().startsWith('CAPACITY')} ? 'Deploy Standby Coach' : 'Adjust Headway'">Act</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="grid xl:grid-cols-5 gap-6 mt-6">
+        <!-- Trend -->
+        <div class="xl:col-span-2 card p-6">
+            <div class="flex justify-between"><h2 class="text-lg font-bold text-navy">📈 Daily Bookings Trend</h2>
+                <span class="chip bg-slate-100" th:text="'Last ' + ${trendDays} + ' days'">Last 8 days</span></div>
+            <div class="grid grid-cols-3 gap-3 mt-4 text-sm bg-slate-50 rounded-xl p-4">
+                <div><div class="text-xs text-slate-500">Total bookings</div><b class="text-xl text-navy" th:text="${#numbers.formatInteger(trendTotal, 1, 'COMMA')}">34,820</b></div>
+                <div><div class="text-xs text-slate-500">Daily average</div><b class="text-xl text-navy" th:text="${#numbers.formatInteger(trendAvg, 1, 'COMMA')}">1,160</b></div>
+                <div><div class="text-xs text-slate-500">Peak day</div><b class="text-xl text-red-600" th:text="${#numbers.formatInteger(trendPeak, 1, 'COMMA')}">1,490</b></div>
+            </div>
+            <svg viewBox="0 0 420 170" class="w-full mt-4">
+                <line x1="0" y1="150" x2="420" y2="150" stroke="#E2E8F0"/>
+                <polyline fill="none" stroke="#1E3A8A" stroke-width="3" stroke-linejoin="round" th:attr="points=${trendPoints}"/>
+                <g th:each="p, st : ${trend}">
+                    <circle th:attr="cx=${p.x()}, cy=${p.y()}, r=${st.last ? 6 : 3.5}, fill=${st.last ? '#F97316' : '#1E3A8A'}"/>
+                    <text th:attr="x=${p.x()}" y="166" text-anchor="middle" font-size="9" fill="#64748B" th:text="${#temporals.format(p.day(), 'dd/MM')}">01</text>
+                </g>
+            </svg>
+            <div class="bg-navy-light rounded-xl p-3 text-xs text-navy mt-2">📊 Weekday commute (Mon–Fri) carries most seats; weekends are about half.</div>
+        </div>
+
+        <!-- Next trips -->
+        <div class="xl:col-span-3 card p-6 overflow-x-auto">
+            <div class="flex justify-between"><h2 class="text-lg font-bold text-navy">🚌 Next 10 Departing Trips</h2>
+                <a th:href="@{/admin/trips}" class="text-xs text-navy font-semibold">View complete manifest →</a></div>
+            <table class="w-full text-sm mt-4">
+                <thead class="text-xs text-slate-500"><tr><th class="text-left pb-2">Time</th><th class="text-left">Corridor</th><th class="text-left">Vehicle</th>
+                    <th class="text-left">Staff</th><th class="text-left">Seats</th><th class="text-left w-28">Load</th><th class="text-right">Status</th></tr></thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(nextTrips)}"><td colspan="7" class="py-6 text-center text-slate-500">No more departures today.</td></tr>
+                <tr th:each="l : ${nextTrips}" class="border-t">
+                    <td class="py-2.5 font-bold text-navy"><a th:href="@{/admin/trips/{id}(id=${l.trip().id})}" th:text="${#temporals.format(l.trip().departureTime, 'hh:mm a')}">08:30</a></td>
+                    <td><b th:text="${l.trip().route.code}">TC-104</b><br><span class="text-[11px] text-slate-500" th:text="${l.trip().route.endpoints}">route</span></td>
+                    <td class="text-xs" th:text="${l.trip().bus.regNo}">bus</td>
+                    <td class="text-xs" th:text="${l.trip().driverName}">driver</td>
+                    <td class="text-xs font-semibold" th:text="${l.peakLoad()} + '/' + ${l.capacity()}">36/36</td>
+                    <td><div class="h-1.5 bg-slate-100 rounded-full"><div class="h-1.5 rounded-full" th:classappend="${l.percent() >= 90} ? 'bg-brand' : 'bg-navy'" th:style="'width:' + ${l.percent()} + '%'"></div></div>
+                        <span class="text-[11px]" th:classappend="${l.percent() >= 90} ? 'text-brand-dark font-bold' : 'text-slate-500'" th:text="${l.percent()} + '%'">100%</span></td>
+                    <td class="text-right"><span class="chip"
+                            th:classappend="${l.trip().status.name() == 'DISRUPTED'} ? 'bg-red-100 text-red-700' : (${l.percent() >= 100} ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700')"
+                            th:text="${l.trip().status.name() == 'DISRUPTED'} ? 'Disrupted' : (${l.percent() >= 100} ? 'Sold out' : ('Boarding (' + ${l.trip().bay} + ')'))">Scheduled</span></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+<footer th:replace="~{fragments/admin :: adminFooter}"></footer>
+</body>
+</html>

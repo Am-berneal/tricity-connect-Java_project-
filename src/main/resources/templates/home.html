@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Home')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('home')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<!-- Hero -->
+<section class="bg-gradient-to-br from-navy to-navy-dark text-white">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 pt-12 pb-28 grid lg:grid-cols-5 gap-10 items-center">
+        <div class="lg:col-span-3">
+            <span class="chip bg-white/10 text-white text-[11px]">● <span th:text="#{home.badge}">100% Electric Fleet</span></span>
+            <h1 class="text-4xl lg:text-5xl font-extrabold mt-4 leading-tight" th:text="#{home.title}">Book your bus seat across the Tricity</h1>
+            <p class="mt-4 text-white/80 max-w-xl" th:text="#{home.subtitle}">Guaranteed reserved seating ...</p>
+            <div class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl text-xs">
+                <div class="bg-white/10 rounded-xl px-3 py-2"><div class="text-white/60">ACTIVE FLEET</div><div class="font-bold">⚡ 24 Buses Live</div></div>
+                <div class="bg-white/10 rounded-xl px-3 py-2"><div class="text-white/60">FREQUENCY</div><div class="font-bold">⏱ 8–15 Min Headway</div></div>
+                <div class="bg-white/10 rounded-xl px-3 py-2"><div class="text-white/60">ASSURANCE</div><div class="font-bold">💺 Confirmed Seat</div></div>
+                <div class="bg-white/10 rounded-xl px-3 py-2"><div class="text-white/60">SAFETY</div><div class="font-bold">✓ Ladies Seats Protected</div></div>
+            </div>
+        </div>
+        <div class="lg:col-span-2 hidden lg:block">
+            <div class="rounded-3xl overflow-hidden shadow-2xl border border-white/20 relative">
+                <img th:src="@{/images/bus-hero.png}" alt="Electric express bus in Chandigarh" class="w-full h-80 object-cover">
+                <div class="absolute bottom-4 left-4 right-4 bg-white rounded-xl px-4 py-3 text-slate-800 flex items-center justify-between text-sm">
+                    <span><b>Chandigarh Eco-Transit</b><br><span class="text-xs text-slate-500">Zero tailpipe CO₂ emissions</span></span>
+                    <span class="font-bold text-navy">CTU-E</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Search card -->
+<section class="max-w-7xl mx-auto px-4 lg:px-6 -mt-20 relative z-10" id="search">
+    <form th:action="@{/search}" method="get" class="card p-6 shadow-lg">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <span class="chip bg-navy text-white">💺 Express Route Seat Booking</span>
+            <span class="text-xs text-slate-500">● Live GPS Active · Instant Mobile E-Ticket</span>
+        </div>
+        <div class="grid md:grid-cols-12 gap-3 items-end">
+            <div class="md:col-span-4">
+                <label class="label" th:text="#{search.from}">Boarding Point</label>
+                <select name="from" id="fromSel" class="input" required></select>
+            </div>
+            <div class="md:col-span-1 flex justify-center">
+                <button type="button" onclick="swapStops()" class="w-11 h-11 rounded-full bg-navy-light text-navy font-bold" title="Swap">⇄</button>
+            </div>
+            <div class="md:col-span-4">
+                <label class="label" th:text="#{search.to}">Drop-off Point</label>
+                <select name="to" id="toSel" class="input" required></select>
+            </div>
+            <div class="md:col-span-3">
+                <label class="label" th:text="#{search.date}">Date of travel</label>
+                <input type="date" name="date" class="input" th:value="${today}" th:min="${today}">
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+            <div class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="text-slate-500 font-medium">Slot preference:</span>
+                <label class="chip border cursor-pointer has-[:checked]:bg-navy has-[:checked]:text-white"><input type="radio" name="slot" value="morning" class="hidden" checked>Morning Peak 7–10 AM</label>
+                <label class="chip border cursor-pointer has-[:checked]:bg-navy has-[:checked]:text-white"><input type="radio" name="slot" value="day" class="hidden">Day 10 AM–5 PM</label>
+                <label class="chip border cursor-pointer has-[:checked]:bg-navy has-[:checked]:text-white"><input type="radio" name="slot" value="evening" class="hidden">Evening Peak 5–8 PM</label>
+                <label class="chip border cursor-pointer has-[:checked]:bg-navy has-[:checked]:text-white"><input type="radio" name="slot" value="all" class="hidden">Any time</label>
+            </div>
+            <button class="btn-primary px-8" th:text="'🔍 ' + #{search.button}">Find Buses</button>
+        </div>
+        <div class="flex flex-wrap gap-4 mt-4 text-xs text-slate-500">
+            <span>✓ Direct CTU Synchronised Express</span><span>▣ Instant Digital Ticket QR on Phone</span>
+            <span>↺ Free cancellation up to 2 hours before departure (90% refund)</span>
+        </div>
+    </form>
+</section>
+
+<!-- Busiest routes -->
+<section class="max-w-7xl mx-auto px-4 lg:px-6 mt-14">
+    <div class="flex items-end justify-between">
+        <div>
+            <div class="text-xs font-bold tracking-widest text-slate-500 uppercase" th:text="#{home.routes.kicker}">High demand corridors</div>
+            <h2 class="text-2xl font-extrabold mt-1" th:text="#{home.routes.title}">Busiest Express Routes Across Tricity</h2>
+            <p class="text-slate-500 text-sm" th:text="#{home.routes.subtitle}">...</p>
+        </div>
+        <span class="chip bg-navy-light text-navy" th:text="${#lists.size(cards)} + ' Corridors Active'">6 Corridors Active</span>
+    </div>
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
+        <div th:each="c : ${cards}" class="card p-5 hover:shadow-md transition">
+            <div class="flex items-center justify-between">
+                <span class="chip" th:classappend="${c.seatsLeft() < 10} ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'"
+                      th:text="'● ' + ${c.seatsLeft()} + ' seats left on next bus'">8 seats left</span>
+                <span class="text-xs font-bold text-navy tracking-wider" th:text="'ROUTE ' + ${c.route().code}">ROUTE TC-104</span>
+            </div>
+            <h3 class="font-bold text-lg mt-3" th:text="${c.route().endpoints}">Kharar → Sector 17</h3>
+            <p class="text-xs text-slate-500" th:text="${#numbers.formatDecimal(c.route().distanceKm, 1, 0)} + ' km · ' + ${c.route().tagline}">19 km</p>
+            <div class="bg-slate-50 rounded-xl p-3 mt-3 text-xs space-y-1">
+                <div class="flex justify-between"><span class="text-slate-500">⏱ Frequency:</span><span class="font-semibold" th:text="'Every ' + ${c.route().frequencyMinutes} + ' mins (Peak)'">Every 10 mins</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">🚌 Next bus:</span>
+                    <span class="font-semibold" th:text="${c.nextTrip() != null} ? ${#temporals.format(c.nextTrip().departureTime, 'dd MMM, hh:mm a')} : 'Tomorrow'">07:45 AM</span></div>
+            </div>
+            <div class="flex items-end justify-between mt-4">
+                <div><div class="text-xs text-slate-500">Fare per passenger</div>
+                    <div class="text-2xl font-extrabold">from ₹<span th:text="${#numbers.formatDecimal(c.fare().total(), 1, 0)}">45</span></div></div>
+                <a class="btn-navy text-sm" th:if="${c.nextTrip() != null}"
+                   th:href="@{/search(from=${c.route().firstStop.stop.id}, to=${c.route().lastStop.stop.id}, date=${c.nextTrip().departureTime.toLocalDate()}, slot='all')}"
+                   th:text="#{home.book} + ' →'">Book Seat →</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pass banner -->
+<section class="max-w-7xl mx-auto px-4 lg:px-6 mt-10">
+    <div class="card p-6 border-brand/40 bg-gradient-to-r from-white to-brand-light flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h3 class="text-xl font-bold">Monthly Commuter Pass – same seat, every weekday. Save 25%</h3>
+            <p class="text-sm text-slate-600 mt-1">Fixed morning and evening bus, your own seat number, digital QR pass and tax invoice.</p>
+            <div class="flex flex-wrap gap-4 mt-3 text-xs text-slate-600"><span>✓ Fixed Reserved Seat Number</span><span>✓ Fast-Track QR Boarding</span><span>✓ Digital Tax Invoice</span></div>
+        </div>
+        <div class="text-right">
+            <div class="text-xs text-slate-500">COMMUTER PLAN</div>
+            <div class="text-3xl font-extrabold text-brand-dark">from ₹760<span class="text-sm text-slate-500 font-medium">/month</span></div>
+            <a th:href="@{/passes/new}" class="btn-primary inline-block mt-2 text-sm">Get Pass →</a>
+        </div>
+    </div>
+</section>
+
+<!-- Why us -->
+<section class="max-w-7xl mx-auto px-4 lg:px-6 mt-12">
+    <div class="text-xs font-bold tracking-widest text-slate-500 uppercase">The Tricity standard</div>
+    <h2 class="text-2xl font-extrabold mt-1">Why commuters trust TriCity Connect</h2>
+    <div class="grid md:grid-cols-4 gap-5 mt-6">
+        <div class="card p-5"><div class="w-10 h-10 rounded-xl bg-navy-light flex items-center justify-center">💺</div>
+            <h4 class="font-bold mt-3">Guaranteed Seat</h4><p class="text-sm text-slate-500 mt-1">Pick your exact window or aisle seat. Your seat is held only for your part of the route, so buses carry more people.</p></div>
+        <div class="card p-5"><div class="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">🛡</div>
+            <h4 class="font-bold mt-3">Ladies Seats Protected</h4><p class="text-sm text-slate-500 mt-1">Rows 1–2 can only be booked by women, and the conductor's list shows who booked them.</p></div>
+        <div class="card p-5"><div class="w-10 h-10 rounded-xl bg-brand-light flex items-center justify-center">🔔</div>
+            <h4 class="font-bold mt-3">Instant Disruption Alerts</h4><p class="text-sm text-slate-500 mt-1">If a dispute stops buses at the Mohali border, you get options: connector bus, rebooking or refund.</p></div>
+        <div class="card p-5"><div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">文</div>
+            <h4 class="font-bold mt-3">Hindi &amp; Punjabi Support</h4><p class="text-sm text-slate-500 mt-1">Use the app in English, हिंदी or ਪੰਜਾਬੀ — switch anytime from the top bar.</p></div>
+    </div>
+</section>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<!-- stop lists for the dropdowns (grouped by city) -->
+<script th:inline="javascript">
+    const stops = /*[[${stopOptions}]]*/ [];
+    const defaultFrom = /*[[${defaultFrom}]]*/ null;
+    const defaultTo = /*[[${defaultTo}]]*/ null;
+
+    function fill(select, selected) {
+        select.innerHTML = '';
+        const byCity = {};
+        stops.forEach(s => (byCity[s.city] = byCity[s.city] || []).push(s));
+        Object.keys(byCity).forEach(city => {
+            const g = document.createElement('optgroup');
+            g.label = city;
+            byCity[city].forEach(s => {
+                const o = new Option(s.name, s.id, false, s.id === selected);
+                g.appendChild(o);
+            });
+            select.appendChild(g);
+        });
+    }
+    fill(document.getElementById('fromSel'), defaultFrom);
+    fill(document.getElementById('toSel'), defaultTo);
+
+    function swapStops() {
+        const f = document.getElementById('fromSel'), t = document.getElementById('toSel');
+        const v = f.value; f.value = t.value; t.value = v;
+    }
+</script>
+</body>
+</html>

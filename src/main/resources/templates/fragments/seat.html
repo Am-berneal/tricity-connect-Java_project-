@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- One seat on the bus layout (used by seats.html). -->
+<th:block th:fragment="seatCell(s)">
+    <th:block th:switch="${s.state().name()}">
+        <th:block th:case="'AVAILABLE'">
+            <input type="radio" name="seat" class="seat-radio" th:id="'seat-' + ${s.label()}" th:value="${s.label()}"
+                   th:checked="${selected != null and selected.label() == s.label()}">
+            <label th:for="'seat-' + ${s.label()}" class="seat" th:classappend="${s.ladies()} ? 'seat-ladies' : 'seat-available'"
+                   th:title="${s.window()} ? 'Window seat' : 'Aisle seat'">
+                <span th:text="${s.label()}">1A</span><span th:if="${s.ladies()}" class="text-[9px]">♀</span>
+            </label>
+        </th:block>
+        <span th:case="'BOOKED'" class="seat seat-booked" title="Booked"><span th:text="${s.label()}">1A</span><span class="text-[9px]">Booked</span></span>
+        <span th:case="'PASS_RESERVED'" class="seat seat-pass" title="Reserved for a monthly pass holder"><span th:text="${s.label()}">1A</span><span class="text-[9px]">Pass</span></span>
+        <span th:case="*" class="seat seat-locked" title="Reserved for women"><span th:text="${s.label()}">1A</span><span class="text-[9px]">♀</span></span>
+    </th:block>
+</th:block>
+</body>
+</html>

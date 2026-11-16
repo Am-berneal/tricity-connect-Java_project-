@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Disruptions')}"></head>
+<body>
+<header th:replace="~{fragments/admin :: adminNav('disruptions')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-6">
+    <div class="text-xs text-slate-500">Admin Console › Operations &amp; Dispatch › Disruption Management</div>
+    <h1 class="text-3xl font-extrabold text-navy">Disruptions &amp; Route Incident Control
+        <span class="chip bg-red-600 text-white align-middle" th:text="${#lists.size(active)} + ' LIVE'">2 LIVE</span></h1>
+    <p class="text-sm text-slate-500">Publish advisories, border closures and short-terminations. Affected passengers instantly get connector / rebook / refund options.</p>
+
+    <section class="grid md:grid-cols-4 gap-4 mt-6">
+        <div class="card p-5"><div class="text-xs text-slate-500">ACTIVE INCIDENTS</div><div class="text-3xl font-extrabold text-red-600" th:text="${#lists.size(active)}">2</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">AFFECTED TRIPS</div><div class="text-3xl font-extrabold text-navy" th:text="${tripsTotal}">8</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">AFFECTED COMMUTERS</div><div class="text-3xl font-extrabold text-brand-dark" th:text="${affectedTotal}">864</div>
+            <div class="text-xs text-slate-500">notified in app (Alerts page)</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">RESOLVED (RECENT)</div><div class="text-3xl font-extrabold text-green-700" th:text="${#lists.size(resolved)}">3</div></div>
+    </section>
+
+    <div class="grid xl:grid-cols-5 gap-6 mt-6">
+        <section class="xl:col-span-3 space-y-4">
+            <h2 class="font-bold text-lg">● Active disruptions</h2>
+            <div th:if="${#lists.isEmpty(active)}" class="card p-8 text-center text-slate-500">No active disruptions. All corridors normal. ✓</div>
+            <article th:each="d : ${active}" class="card p-5 border-l-4 border-l-red-600">
+                <div class="flex flex-wrap justify-between gap-2 text-xs">
+                    <span><span class="chip bg-red-100 text-red-700" th:text="'● ACTIVE · ' + ${#strings.toUpperCase(d.type.label)}">ACTIVE</span>
+                        <b class="font-mono ml-2" th:text="'#' + ${d.code}">#DIS</b></span>
+                    <span class="text-slate-500" th:text="'Logged ' + ${#temporals.format(d.createdAt, 'dd MMM, hh:mm a')}">logged</span>
+                </div>
+                <h3 class="font-bold text-lg mt-2" th:text="${d.title}">title</h3>
+                <div class="text-xs text-slate-500" th:text="'Routes: ' + ${d.routeCodes} + ' · Border: ' + ${d.borderImpact} + ' · ' + ${#temporals.format(d.startTime, 'dd MMM hh:mm a')} + ' – ' + ${#temporals.format(d.endTime, 'hh:mm a')}">meta</div>
+                <p class="text-sm text-slate-600 mt-2" th:text="${d.reason}">reason</p>
+                <div class="flex flex-wrap gap-2 mt-3 text-xs">
+                    <span th:if="${d.newLastStop != null}" class="chip bg-red-50 text-red-700" th:text="'Buses end at ' + ${d.newLastStop.name}">ends</span>
+                    <span th:if="${d.delayMinutes > 0}" class="chip bg-amber-50 text-amber-700" th:text="'+' + ${d.delayMinutes} + ' min delay'">delay</span>
+                    <span th:if="${d.offerConnector}" class="chip bg-green-50 text-green-700">Free connector bus</span>
+                    <span th:if="${d.offerRebook}" class="chip bg-navy-light text-navy">Free rebooking</span>
+                    <span th:if="${d.offerRefund}" class="chip bg-brand-light text-brand-dark">Auto 100% refund option</span>
+                </div>
+                <div class="flex flex-wrap justify-between items-center gap-3 mt-4 border-t pt-3">
+                    <span class="text-xs text-slate-600"><b th:text="${d.affectedPassengers}">412</b> affected passengers notified · <b th:text="${d.affectedTrips}">6</b> trips</span>
+                    <form th:action="@{/admin/disruptions/{id}/resolve(id=${d.id})}" method="post" class="flex gap-2">
+                        <input name="note" class="input !py-1.5 text-xs !w-56" placeholder="Resolution note (optional)">
+                        <button class="bg-green-600 text-white text-xs font-semibold rounded-lg px-3">✓ Resolve &amp; Close</button>
+                    </form>
+                </div>
+            </article>
+
+            <h2 class="font-bold text-lg pt-4">Past / resolved disruptions</h2>
+            <div th:if="${#lists.isEmpty(resolved)}" class="text-sm text-slate-500">None yet.</div>
+            <article th:each="d : ${resolved}" class="card p-4 text-sm">
+                <div class="flex justify-between text-xs"><span><span class="chip bg-green-100 text-green-700">✓ RESOLVED</span> <b class="font-mono" th:text="${d.code}">code</b></span>
+                    <span class="text-slate-500" th:text="${#temporals.format(d.startTime, 'dd MMM, hh:mm a')}">time</span></div>
+                <b class="block mt-1" th:text="${d.title}">title</b>
+                <div class="text-xs text-slate-500 mt-1" th:text="'Resolution: ' + ${d.resolutionNote} + ' · ' + ${d.affectedPassengers} + ' passengers were affected'">note</div>
+            </article>
+        </section>
+
+        <!-- Create -->
+        <aside class="xl:col-span-2">
+            <form th:action="@{/admin/disruptions}" th:object="${form}" method="post" class="card p-6 space-y-4 sticky top-20">
+                <h2 class="font-bold text-lg">⚠ Create Disruption Advisory</h2>
+                <p class="text-xs text-slate-500">Publishing marks the trips in the time window and notifies passengers.</p>
+                <div>
+                    <label class="label">Disruption type *</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label th:each="t : ${types}" class="border rounded-lg px-3 py-2 text-sm cursor-pointer has-[:checked]:border-red-500 has-[:checked]:bg-red-50">
+                            <input type="radio" th:field="*{type}" th:value="${t}" class="mr-1"> <span th:text="${t.label}">type</span></label>
+                    </div>
+                </div>
+                <div><label class="label">Affected routes (hold Ctrl to choose several) *</label>
+                    <select th:field="*{routeIds}" multiple size="5" class="input text-sm">
+                        <option th:each="r : ${routes}" th:value="${r.id}" th:text="${r.code} + ' · ' + ${r.endpoints}">r</option></select></div>
+                <div><label class="label">Tricity inter-state border impact</label>
+                    <select th:field="*{borderImpact}" class="input text-sm"><option th:each="b : ${borders}" th:value="${b}" th:text="${b}">b</option></select></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="label">New last stop (short-terminate)</label>
+                        <select th:field="*{newLastStopId}" class="input text-sm"><option value="">— none —</option>
+                            <option th:each="s : ${stops}" th:value="${s.id}" th:text="${s.name}">s</option></select></div>
+                    <div><label class="label">Delay (minutes)</label><input type="number" min="0" th:field="*{delayMinutes}" class="input text-sm"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="label">Start time</label><input type="datetime-local" th:field="*{startTime}" class="input text-sm"></div>
+                    <div><label class="label">Expected end</label><input type="datetime-local" th:field="*{endTime}" class="input text-sm"></div>
+                </div>
+                <div><label class="label">Headline (optional)</label><input th:field="*{title}" class="input text-sm" placeholder="Auto-generated if empty"></div>
+                <div><label class="label">Reason &amp; advisory text *</label>
+                    <textarea th:field="*{reason}" rows="3" class="input text-sm" placeholder="e.g. NH-5 emergency culvert work near Balongi; buses end at Mohali Phase 7."></textarea></div>
+                <div class="space-y-1 text-sm">
+                    <div class="label">Offered commuter options</div>
+                    <label class="flex gap-2"><input type="checkbox" th:field="*{offerConnector}"> Free connector bus from the new last stop</label>
+                    <label class="flex gap-2"><input type="checkbox" th:field="*{offerRebook}"> Free rebook on a later bus</label>
+                    <label class="flex gap-2"><input type="checkbox" th:field="*{offerRefund}"> Instant 100% refund to TriCity Wallet</label>
+                </div>
+                <div class="bg-navy-light rounded-xl p-3 text-sm">
+                    <label class="flex gap-2"><input type="checkbox" th:field="*{notifyPassengers}"> Notify passengers (app alert; SMS/WhatsApp needs a gateway)</label>
+                </div>
+                <button class="btn-primary w-full">📢 Publish Alert &amp; Notify Commuters</button>
+            </form>
+        </aside>
+    </div>
+</main>
+<footer th:replace="~{fragments/admin :: adminFooter}"></footer>
+</body>
+</html>

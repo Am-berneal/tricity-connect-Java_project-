@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Trip Scheduling')}"></head>
+<body>
+<header th:replace="~{fragments/admin :: adminNav('trips')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-6">
+    <div class="flex flex-wrap justify-between items-end gap-3">
+        <div>
+            <div class="text-xs text-slate-500">Admin Console › Operations &amp; Dispatch › Scheduled Trips</div>
+            <h1 class="text-3xl font-extrabold text-navy">Trip Scheduling &amp; Dispatch Operations</h1>
+            <p class="text-sm text-slate-500">Scheduled departures, live passenger loads, pass-holder reservations and dispatch controls.</p>
+        </div>
+        <div class="flex gap-2">
+            <button type="button" class="btn-light text-sm" onclick="openModal('bulk')">⧉ Bulk Schedule (Weekdays)</button>
+            <button type="button" class="btn-primary text-sm" onclick="openModal('create')">+ Create Trip</button>
+        </div>
+    </div>
+
+    <section class="grid md:grid-cols-4 gap-4 mt-6">
+        <div class="card p-5"><div class="text-xs text-slate-500">TOTAL TRIPS</div><div class="text-3xl font-extrabold text-navy" th:text="${#lists.size(loads)}">148</div>
+            <div class="text-xs text-slate-500" th:text="${#temporals.format(date, 'EEE, dd MMM yyyy')}">date</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">SEATS RESERVED / CAPACITY</div>
+            <div class="text-3xl font-extrabold text-navy" th:text="${#numbers.formatInteger(totalSeatsSold, 1, 'COMMA')} + ' / ' + ${#numbers.formatInteger(totalCapacity, 1, 'COMMA')}">4,680</div>
+            <div class="text-xs text-slate-500" th:text="'Average peak load ' + ${avgLoad} + '%'">load</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">PASS HOLDER SEATS</div><div class="text-3xl font-extrabold text-green-700" th:text="${passHolders}">1,840</div>
+            <div class="text-xs text-slate-500">Fixed seats held for commuter passes</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">DISRUPTED / CANCELLED</div><div class="text-3xl font-extrabold text-red-600" th:text="${disrupted}">1</div>
+            <a th:href="@{/admin/disruptions}" class="text-xs text-navy font-semibold">Disruption control →</a></div>
+    </section>
+
+    <form method="get" class="card p-4 mt-6 flex flex-wrap gap-3 items-center">
+        <input type="date" name="date" th:value="${date}" class="input !w-44 text-sm" onchange="this.form.submit()">
+        <select name="routeId" class="input !w-64 text-sm" onchange="this.form.submit()">
+            <option value="">All routes</option>
+            <option th:each="r : ${routes}" th:value="${r.id}" th:text="${r.code} + ' · ' + ${r.endpoints}" th:selected="${r.id == routeId}">r</option></select>
+        <select name="status" class="input !w-40 text-sm" onchange="this.form.submit()">
+            <option value="">All statuses</option>
+            <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}" th:selected="${s == status}">s</option></select>
+        <input name="q" th:value="${q}" class="input !w-64 text-sm" placeholder="🔍 Trip ID (TR-…), bus or driver">
+        <button class="btn-light text-sm">Filter</button>
+    </form>
+
+    <div class="card mt-4 overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+            <tr><th class="p-3 text-left">Trip ID</th><th class="p-3 text-left">Route &amp; corridor</th><th class="p-3 text-left">Bus &amp; driver</th>
+                <th class="p-3 text-left">Departure</th><th class="p-3 text-left w-44">Peak load</th><th class="p-3 text-left">Passes</th>
+                <th class="p-3 text-left">Status</th><th class="p-3 text-right">Actions</th></tr>
+            </thead>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(loads)}"><td colspan="8" class="p-8 text-center text-slate-500">No trips for this filter.</td></tr>
+            <tr th:each="l : ${loads}" class="border-t" th:with="t=${l.trip()}"
+                th:classappend="${t.status.name() == 'CANCELLED'} ? 'bg-red-50/50 opacity-70' : (${t.status.name() == 'DISRUPTED'} ? 'bg-amber-50/50' : '')">
+                <td class="p-3 font-mono text-xs"><a th:href="@{/admin/trips/{id}(id=${t.id})}" class="text-navy font-bold" th:text="'TR-' + ${t.id}">TR-1</a></td>
+                <td class="p-3"><span class="chip bg-navy text-white" th:text="${t.route.code}">TC-104</span>
+                    <div class="text-xs mt-1" th:text="${t.route.endpoints}">route</div></td>
+                <td class="p-3 text-xs"><b th:text="${t.bus.regNo}">bus</b><br><span class="text-slate-500" th:text="${t.driverName}">driver</span></td>
+                <td class="p-3"><b th:text="${#temporals.format(t.departureTime, 'hh:mm a')}">08:30</b>
+                    <span th:if="${t.delayMinutes > 0}" class="chip bg-amber-100 text-amber-700" th:text="'+' + ${t.delayMinutes} + 'm'">+5</span>
+                    <div class="text-[11px] text-slate-500" th:text="${t.bay}">Bay</div></td>
+                <td class="p-3"><div class="flex justify-between text-xs"><span th:text="${l.peakLoad()} + ' / ' + ${l.capacity()}">36/36</span>
+                        <b th:text="${l.percent()} + '%'">100%</b></div>
+                    <div class="h-1.5 bg-slate-100 rounded mt-1"><div class="h-1.5 rounded" th:classappend="${l.percent() >= 90} ? 'bg-brand' : 'bg-navy'" th:style="'width:' + ${l.percent()} + '%'"></div></div>
+                    <div class="text-[11px] text-slate-500" th:text="${l.bookings()} + ' tickets (stop-wise)'">tickets</div></td>
+                <td class="p-3 text-xs" th:text="${l.passHolders()} + ' pass'">0</td>
+                <td class="p-3">
+                    <span class="chip" th:classappend="${t.status.name() == 'CANCELLED'} ? 'bg-red-100 text-red-700' : (${t.status.name() == 'DISRUPTED'} ? 'bg-amber-100 text-amber-700' : (${t.departureTime.isBefore(now)} ? 'bg-slate-100 text-slate-600' : 'bg-green-100 text-green-700'))"
+                          th:text="${t.status.name() == 'SCHEDULED' and t.departureTime.isBefore(now)} ? 'Departed' : ${t.status}">Scheduled</span>
+                    <div th:if="${t.terminatesAtSeq != null}" class="text-[11px] text-red-600" th:text="'Ends at ' + ${t.route.stopAtSeq(t.terminatesAtSeq).stop.name}">ends</div></td>
+                <td class="p-3 text-right whitespace-nowrap">
+                    <a th:href="@{/admin/trips/{id}(id=${t.id})}" class="btn-light text-xs !px-3 !py-1.5">Manifest</a>
+                    <form th:if="${t.status.name() != 'CANCELLED' and t.departureTime.isAfter(now)}" th:action="@{/admin/trips/{id}/cancel(id=${t.id})}" method="post" class="inline"
+                          onsubmit="return confirm('Cancel this trip? Every passenger gets a 100% refund to their wallet.')">
+                        <input type="hidden" name="back" th:value="'/admin/trips?date=' + ${date}">
+                        <button class="text-xs text-red-600 font-semibold ml-2">Cancel</button></form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+
+<!-- Create trip -->
+<div id="create" class="fixed inset-0 bg-slate-900/50 z-50 hidden items-center justify-center p-4">
+    <form th:action="@{/admin/trips}" method="post" class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="flex justify-between p-5 border-b"><h3 class="font-bold text-lg">+ Create Trip</h3><button type="button" class="text-xl" onclick="closeModal('create')">×</button></div>
+        <div class="p-5 space-y-3">
+            <div><label class="label">Route</label><select name="routeId" class="input"><option th:each="r : ${routes}" th:value="${r.id}" th:text="${r.code} + ' · ' + ${r.endpoints}">r</option></select></div>
+            <div><label class="label">Bus</label><select name="busId" class="input"><option th:each="b : ${buses}" th:value="${b.id}" th:text="${b.regNo} + ' · ' + ${b.status.label}">b</option></select></div>
+            <div><label class="label">Departure (from first stop)</label><input type="datetime-local" name="departure" class="input" required></div>
+        </div>
+        <div class="flex justify-end gap-2 p-5 border-t bg-slate-50 rounded-b-2xl"><button type="button" class="btn-light" onclick="closeModal('create')">Cancel</button><button class="btn-primary">Create</button></div>
+    </form>
+</div>
+
+<!-- Bulk schedule -->
+<div id="bulk" class="fixed inset-0 bg-slate-900/50 z-50 hidden items-center justify-center p-4">
+    <form th:action="@{/admin/trips/bulk}" method="post" class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="flex justify-between p-5 border-b"><div><h3 class="font-bold text-lg">⧉ Bulk Schedule (Weekdays)</h3>
+            <p class="text-xs text-slate-500">Creates the same departure every Monday–Friday in the date range.</p></div>
+            <button type="button" class="text-xl" onclick="closeModal('bulk')">×</button></div>
+        <div class="p-5 space-y-3">
+            <div><label class="label">Route</label><select name="routeId" class="input"><option th:each="r : ${routes}" th:value="${r.id}" th:text="${r.code} + ' · ' + ${r.endpoints}">r</option></select></div>
+            <div><label class="label">Bus</label><select name="busId" class="input"><option th:each="b : ${buses}" th:value="${b.id}" th:text="${b.regNo} + ' · ' + ${b.status.label}">b</option></select></div>
+            <div><label class="label">Departure time</label><input type="time" name="time" class="input" value="08:15" required></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="label">From</label><input type="date" name="from" class="input" required></div>
+                <div><label class="label">To</label><input type="date" name="to" class="input" required></div>
+            </div>
+        </div>
+        <div class="flex justify-end gap-2 p-5 border-t bg-slate-50 rounded-b-2xl"><button type="button" class="btn-light" onclick="closeModal('bulk')">Cancel</button><button class="btn-primary">Schedule</button></div>
+    </form>
+</div>
+
+<footer th:replace="~{fragments/admin :: adminFooter}"></footer>
+<script>
+    function openModal(id) { const m = document.getElementById(id); m.classList.remove('hidden'); m.classList.add('flex'); }
+    function closeModal(id) { const m = document.getElementById(id); m.classList.add('hidden'); m.classList.remove('flex'); }
+</script>
+</body>
+</html>

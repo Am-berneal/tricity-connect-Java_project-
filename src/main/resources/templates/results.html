@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Search buses')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('book')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<!-- Search summary / modify search -->
+<section class="bg-white border-b border-slate-200">
+    <form th:action="@{/search}" method="get" class="max-w-7xl mx-auto px-4 lg:px-6 py-5 grid md:grid-cols-12 gap-3 items-end">
+        <div class="md:col-span-4">
+            <label class="label">Boarding point</label>
+            <select name="from" class="input" required>
+                <option value="">Choose stop</option>
+                <option th:each="s : ${stops}" th:value="${s.id}" th:selected="${s.id == from}"
+                        th:text="${s.name} + ' — ' + ${s.city}">Kharar Bus Stand</option>
+            </select>
+        </div>
+        <div class="md:col-span-4">
+            <label class="label">Drop-off point</label>
+            <select name="to" class="input" required>
+                <option value="">Choose stop</option>
+                <option th:each="s : ${stops}" th:value="${s.id}" th:selected="${s.id == to}"
+                        th:text="${s.name} + ' — ' + ${s.city}">Sector 17 ISBT</option>
+            </select>
+        </div>
+        <div class="md:col-span-2">
+            <label class="label">Date</label>
+            <input type="date" name="date" class="input" th:value="${date}" th:min="${today}">
+        </div>
+        <input type="hidden" name="slot" th:value="${slot}">
+        <div class="md:col-span-2"><button class="btn-primary w-full">🔍 Search</button></div>
+    </form>
+</section>
+
+<div th:if="${fromStop != null and toStop != null}" class="bg-navy-light">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-2 text-xs text-navy flex flex-wrap justify-between gap-2">
+        <span>● <b th:text="${fromStop.name} + ' → ' + ${toStop.name}">Kharar → Sector 17</b> ·
+            <span th:text="${#temporals.format(date, 'EEE, dd MMM yyyy')}">Today</span> ·
+            <span th:text="${#lists.size(options)} + ' buses available'">8 available</span> ·
+            <span th:text="${electricCount} + ' electric (zero emission)'">6 electric</span></span>
+        <span>CTU AIS-140 GPS · live seat availability</span>
+    </div>
+</div>
+
+<main class="max-w-7xl mx-auto px-4 lg:px-6 py-6 grid lg:grid-cols-4 gap-6">
+
+    <!-- Filters -->
+    <aside class="card p-5 h-fit">
+        <form th:action="@{/search}" method="get" id="filters">
+            <input type="hidden" name="from" th:value="${from}">
+            <input type="hidden" name="to" th:value="${to}">
+            <input type="hidden" name="date" th:value="${date}">
+            <input type="hidden" name="sort" th:value="${sort}">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold">Trip Filters</h3>
+                <a class="text-xs text-navy font-semibold" th:href="@{/search(from=${from}, to=${to}, date=${date})}">Reset all</a>
+            </div>
+
+            <div class="label">Departure window</div>
+            <div class="space-y-2 mb-5 text-sm">
+                <label class="flex items-center gap-2"><input type="radio" name="slot" value="all" th:checked="${slot == 'all'}" onchange="this.form.submit()"> Any time</label>
+                <label class="flex items-center gap-2"><input type="radio" name="slot" value="morning" th:checked="${slot == 'morning'}" onchange="this.form.submit()"> Morning peak (07:00 – 10:00)</label>
+                <label class="flex items-center gap-2"><input type="radio" name="slot" value="day" th:checked="${slot == 'day'}" onchange="this.form.submit()"> Day (10:00 – 17:00)</label>
+                <label class="flex items-center gap-2"><input type="radio" name="slot" value="evening" th:checked="${slot == 'evening'}" onchange="this.form.submit()"> Evening (after 17:00)</label>
+            </div>
+
+            <div class="label">Fleet type</div>
+            <div class="space-y-2 mb-5 text-sm">
+                <label class="flex items-center gap-2"><input type="radio" name="busType" value="" th:checked="${busType == null or busType == ''}" onchange="this.form.submit()"> All buses</label>
+                <label th:each="t : ${busTypes}" class="flex items-center gap-2">
+                    <input type="radio" name="busType" th:value="${t.name()}" th:checked="${busType == t.name()}" onchange="this.form.submit()">
+                    <span th:text="${t.label}">AC Electric</span></label>
+            </div>
+
+            <div class="label">Preferences</div>
+            <label class="flex items-center justify-between text-sm mb-5">
+                <span>Ladies seats available<br><span class="text-xs text-slate-500">Rows 1 &amp; 2</span></span>
+                <input type="checkbox" name="ladies" value="true" th:checked="${ladies}" onchange="this.form.submit()" class="w-5 h-5 accent-navy">
+            </label>
+
+            <div class="label">Max fare</div>
+            <input type="range" name="maxFare" min="10" max="70" step="5" th:value="${maxFare != null ? maxFare : 70}"
+                   class="w-full accent-brand" onchange="this.form.submit()" oninput="document.getElementById('fareOut').innerText = '₹' + this.value">
+            <div class="flex justify-between text-xs text-slate-500"><span>₹10</span><span id="fareOut" class="font-bold text-navy" th:text="'₹' + ${maxFare != null ? maxFare : 70}">₹70</span></div>
+
+            <div class="mt-6 bg-navy-light rounded-xl p-3 text-xs text-navy">
+                ✓ <b>Stop-wise seats:</b> a seat freed when someone gets off can be booked by the next passenger.
+            </div>
+        </form>
+    </aside>
+
+    <!-- Results -->
+    <section class="lg:col-span-3 space-y-4">
+        <div class="card px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+            <span class="text-sm"><b th:text="'Showing ' + ${#lists.size(options)} + ' express buses'">Showing 6</b> for your journey</span>
+            <div class="flex gap-2 text-xs font-semibold">
+                <span class="text-slate-500 self-center">Sort:</span>
+                <a th:each="s : ${sorts}"
+                   th:href="@{/search(from=${from}, to=${to}, date=${date}, slot=${slot}, busType=${busType}, ladies=${ladies}, maxFare=${maxFare}, sort=${s})}"
+                   class="px-3 py-1.5 rounded-full border"
+                   th:classappend="${sort == s} ? 'bg-navy text-white border-navy' : 'text-slate-600'"
+                   th:text="${s == 'earliest'} ? 'Earliest' : (${s == 'fastest'} ? 'Fastest' : (${s == 'cheapest'} ? 'Lowest fare' : 'Most seats'))">Earliest</a>
+            </div>
+        </div>
+
+        <div th:if="${sameStop}" class="card p-8 text-center text-slate-500">Boarding and drop-off points must be different.</div>
+        <div th:if="${from == null or to == null}" class="card p-8 text-center text-slate-500">Choose your boarding and drop-off points above to see buses.</div>
+        <div th:if="${from != null and to != null and !sameStop and #lists.isEmpty(options)}" class="card p-10 text-center">
+            <div class="text-4xl">🚌</div>
+            <h3 class="font-bold mt-2">No buses found</h3>
+            <p class="text-sm text-slate-500">No bus runs directly between these stops in this time window. Try "Any time", another date, or a nearby stop.</p>
+        </div>
+
+        <div th:each="o : ${options}" class="card p-5" th:classappend="${o.full()} ? 'opacity-80' : ''">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-bold text-navy bg-navy-light px-3 py-1 rounded-lg" th:text="${o.trip().route.code}">TC-104</span>
+                    <span class="text-xs text-slate-500" th:text="${o.trip().bus.regNo}">CH01-GA-2041</span>
+                    <span class="chip bg-green-50 text-green-700" th:text="'🍃 ' + ${o.trip().bus.type.label}">AC Electric</span>
+                    <span th:if="${o.full()}" class="chip bg-red-50 text-red-600">● Full (0 seats available)</span>
+                    <span th:if="${o.freeAfterNote() != null}" class="chip bg-amber-50 text-amber-700" th:text="'ⓘ ' + ${o.freeAfterNote()}">2 seats free after Mohali</span>
+                </div>
+                <span class="text-xs" th:classappend="${o.delayed()} ? 'text-amber-600' : 'text-green-600'"
+                      th:text="${o.delayed()} ? ('● +' + ${o.trip().delayMinutes} + ' mins delay') : ('● On time · ' + ${o.trip().bay})">● On Time</span>
+            </div>
+
+            <div class="grid grid-cols-12 items-center gap-3 mt-4">
+                <div class="col-span-3">
+                    <div class="text-2xl font-extrabold" th:text="${#temporals.format(o.departAt(), 'hh:mm a')}">07:45 AM</div>
+                    <div class="text-sm font-medium" th:text="${o.from().stop.name}">Kharar</div>
+                    <div class="text-xs text-slate-500" th:text="${o.from().stop.city}">Mohali</div>
+                </div>
+                <div class="col-span-5 text-center text-xs text-slate-500">
+                    <div class="flex justify-between"><span th:text="${o.minutes()} + ' mins'">35 mins</span>
+                        <span class="text-navy font-semibold" th:text="${#numbers.formatDecimal(o.km(), 1, 0)} + ' km'">19 km</span>
+                        <span th:text="${o.stopsBetween() == 0} ? 'Non-stop' : (${o.stopsBetween()} + ' stops')">2 stops</span></div>
+                    <div class="relative h-1 bg-slate-200 rounded my-2"><div class="absolute left-0 top-0 h-1 bg-navy rounded" style="width:100%"></div>
+                        <span class="absolute -left-1 -top-1 w-3 h-3 rounded-full bg-navy"></span><span class="absolute -right-1 -top-1 w-3 h-3 rounded-full bg-brand"></span></div>
+                    <div th:text="${o.trip().route.name}">via Mohali Phase 7</div>
+                </div>
+                <div class="col-span-4 text-right">
+                    <div class="text-2xl font-extrabold" th:text="${#temporals.format(o.arriveAt(), 'hh:mm a')}">08:20 AM</div>
+                    <div class="text-sm font-medium" th:text="${o.to().stop.name}">Sector 17 ISBT</div>
+                    <div class="text-xs text-slate-500" th:text="${o.to().stop.city}">Chandigarh</div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-end justify-between gap-4 mt-4">
+                <div class="w-64">
+                    <div class="flex justify-between text-xs font-semibold mb-1">
+                        <span th:class="${o.seatsLeft() < 6} ? 'text-red-600' : 'text-slate-700'"
+                              th:text="${o.full()} ? 'Bus full' : (${o.seatsLeft()} + ' seats left')">11 seats left</span>
+                        <span class="text-pink-600" th:text="${o.ladiesFree()} + ' ladies seats free'">3 ladies</span>
+                    </div>
+                    <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div class="h-2 rounded-full" th:classappend="${o.occupancyPercent() > 85} ? 'bg-red-500' : (${o.occupancyPercent() > 60} ? 'bg-brand' : 'bg-green-600')"
+                             th:style="'width:' + ${o.occupancyPercent()} + '%'"></div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <div class="text-xs text-slate-500" th:text="${o.fare().peak()} ? 'Peak fare' : 'Standard fare'">Standard fare</div>
+                        <div class="text-2xl font-extrabold">₹<span th:text="${#numbers.formatDecimal(o.fare().total(), 1, 0)}">45</span></div>
+                    </div>
+                    <a th:unless="${o.full()}" class="btn-primary"
+                       th:href="@{/trips/{id}/seats(id=${o.trip().id}, from=${o.from().seq}, to=${o.to().seq})}">Select Seat</a>
+                    <span th:if="${o.full()}" class="btn-light opacity-60 cursor-not-allowed">Bus Full</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="rounded-2xl bg-navy text-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h3 class="font-bold text-lg">Travel this route every day?</h3>
+                <p class="text-sm text-white/80">Lock your morning and evening seat with a commuter pass and save up to 35%.</p>
+            </div>
+            <a th:href="@{/passes/new}" class="bg-white text-navy font-bold rounded-xl px-5 py-3 text-sm">View Monthly Passes</a>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

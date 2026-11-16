@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Trip manifest')}"></head>
+<body>
+<header th:replace="~{fragments/admin :: adminNav('trips')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-6">
+    <a th:href="@{/admin/trips(date=${trip.departureTime.toLocalDate()})}" class="text-sm text-slate-500">← Back to trips</a>
+    <div class="grid lg:grid-cols-3 gap-6 mt-3">
+        <section class="lg:col-span-2 space-y-4">
+            <div class="card p-6">
+                <div class="flex flex-wrap justify-between gap-3">
+                    <div><span class="chip bg-navy text-white" th:text="${trip.route.code}">TC-104</span>
+                        <span class="chip ml-1" th:classappend="${trip.status.name() == 'CANCELLED'} ? 'bg-red-100 text-red-700' : (${trip.status.name() == 'DISRUPTED'} ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700')" th:text="${trip.status}">status</span>
+                        <h1 class="text-2xl font-extrabold text-navy mt-2" th:text="'Quick Dispatch Control · TR-' + ${trip.id}">TR</h1>
+                        <p class="text-sm text-slate-500" th:text="${trip.route.endpoints} + ' · ' + ${#temporals.format(trip.departureTime, 'EEE dd MMM yyyy, hh:mm a')}">route</p></div>
+                    <div class="text-right"><div class="text-3xl font-extrabold" th:text="${load.peakLoad()} + '/' + ${load.capacity()}">36/36</div>
+                        <div class="text-xs text-slate-500" th:text="${load.percent()} + '% peak load · ' + ${load.boarded()} + ' checked in'">load</div></div>
+                </div>
+                <div class="grid md:grid-cols-3 gap-3 mt-4 text-sm">
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">DRIVER ASSIGNED</div><b th:text="${trip.driverName}">driver</b></div>
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">VEHICLE</div><b th:text="${trip.bus.regNo}">bus</b>
+                        <div class="text-xs text-slate-500" th:text="${trip.bus.type.label}">type</div></div>
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">ROUTE INTEGRITY</div>
+                        <b th:text="${trip.delayMinutes > 0} ? ('Delayed +' + ${trip.delayMinutes} + ' min') : 'On time'">On time</b></div>
+                </div>
+            </div>
+
+            <div class="card overflow-x-auto">
+                <div class="p-4 flex justify-between"><h2 class="font-bold">Passenger manifest (<span th:text="${#lists.size(bookings)}">0</span> tickets)</h2>
+                    <button type="button" class="btn-light text-xs" onclick="window.print()">🖨 Print Manifest</button></div>
+                <table class="w-full text-sm">
+                    <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                    <tr><th class="p-3 text-left">Seat</th><th class="p-3 text-left">Passenger</th><th class="p-3 text-left">Boards</th><th class="p-3 text-left">Drops</th>
+                        <th class="p-3 text-left">Category</th><th class="p-3 text-left">PNR</th><th class="p-3 text-left">Checked in</th></tr></thead>
+                    <tbody>
+                    <tr th:if="${#lists.isEmpty(bookings)}"><td colspan="7" class="p-6 text-center text-slate-500">No tickets on this trip.</td></tr>
+                    <tr th:each="b : ${bookings}" class="border-t">
+                        <td class="p-3"><span class="chip" th:classappend="${b.seatNo.startsWith('1') and b.seatNo.length() == 2 or b.seatNo.startsWith('2') and b.seatNo.length() == 2} ? 'bg-pink-100 text-pink-700' : 'bg-navy-light text-navy'" th:text="${b.seatNo}">4A</span></td>
+                        <td class="p-3" th:text="${b.passengerName} + ' (' + ${b.passengerGender != null ? b.passengerGender.label : '-'} + ')'">name</td>
+                        <td class="p-3 text-xs" th:text="${b.fromStop.stop.name}">from</td>
+                        <td class="p-3 text-xs" th:text="${b.toStop.stop.name}">to</td>
+                        <td class="p-3 text-xs" th:text="${b.concession != null ? b.concession.label : 'General'}">General</td>
+                        <td class="p-3 font-mono text-xs" th:text="${b.pnr}">PNR</td>
+                        <td class="p-3"><span class="chip" th:classappend="${b.boarded} ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'" th:text="${b.boarded} ? '✓ Yes' : 'Not yet'">no</span></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card p-4" th:if="${!#lists.isEmpty(passes)}">
+                <h2 class="font-bold">Commuter pass holders on this bus</h2>
+                <div class="flex flex-wrap gap-2 mt-2 text-sm">
+                    <span th:each="p : ${passes}" class="chip bg-indigo-50 text-indigo-700" th:text="${p.seatNo} + ' · ' + ${p.user.fullName} + ' · ' + ${p.passNo}">pass</span>
+                </div>
+            </div>
+        </section>
+
+        <aside class="space-y-4">
+            <div class="card p-5">
+                <div class="flex justify-between"><h3 class="font-bold" th:text="${trip.route.code} + ' corridor flow'">flow</h3>
+                    <span class="text-xs text-slate-500" th:text="${#numbers.formatDecimal(trip.route.distanceKm, 1, 1)} + ' km'">km</span></div>
+                <ol class="mt-4 space-y-3">
+                    <li th:each="s : ${trip.route.stops}" class="flex gap-3 text-sm">
+                        <span class="w-6 h-6 rounded-full text-[10px] font-bold flex items-center justify-center"
+                              th:classappend="${s.seq < currentSeq} ? 'bg-slate-300 text-white' : (${s.seq == currentSeq} ? 'bg-brand text-white' : 'border-2 border-navy text-navy')" th:text="${s.seq}">1</span>
+                        <span class="flex-1"><b th:text="${s.stop.name}">stop</b><br>
+                            <span class="text-xs text-slate-500" th:text="'ETA ' + ${#temporals.format(trip.expectedAt(s), 'hh:mm a')}">eta</span></span>
+                    </li>
+                </ol>
+            </div>
+            <form th:action="@{/admin/trips/{id}/bus(id=${trip.id})}" method="post" class="card p-5 space-y-3">
+                <h3 class="font-bold">Swap bus</h3>
+                <select name="busId" class="input text-sm"><option th:each="b : ${buses}" th:value="${b.id}" th:selected="${b.id == trip.bus.id}" th:text="${b.regNo} + ' · ' + ${b.status.label}">b</option></select>
+                <button class="btn-navy w-full text-sm">Assign Bus</button>
+            </form>
+            <a th:href="@{/conductor(tripId=${trip.id})}" class="btn-light block text-center text-sm">Open conductor ETM view ↗</a>
+            <form th:if="${trip.status.name() != 'CANCELLED'}" th:action="@{/admin/trips/{id}/cancel(id=${trip.id})}" method="post" class="card p-5 space-y-3"
+                  onsubmit="return confirm('Cancel this trip and refund everyone 100%?')">
+                <h3 class="font-bold text-red-700">Cancel trip (refund all)</h3>
+                <input name="reason" class="input text-sm" placeholder="Reason, e.g. bus breakdown">
+                <input type="hidden" name="back" th:value="'/admin/trips/' + ${trip.id}">
+                <button class="w-full bg-red-600 text-white rounded-lg py-2 text-sm font-semibold">Cancel &amp; Refund Passengers</button>
+            </form>
+        </aside>
+    </div>
+</main>
+<footer th:replace="~{fragments/admin :: adminFooter}"></footer>
+</body>
+</html>

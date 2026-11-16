@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Get a commuter pass')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('passes')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+    <h1 class="text-3xl font-extrabold text-navy">Get Your Monthly Commuter Pass</h1>
+    <p class="text-slate-500">Lock a guaranteed seat on your morning and evening express bus. Save up to 35% compared to daily tickets.</p>
+
+    <!-- Choices reload this page (GET) so the seat map and price are always correct -->
+    <form method="get" th:action="@{/passes/new}" id="choose" class="grid lg:grid-cols-3 gap-6 mt-6">
+        <input type="hidden" name="seat" id="seatHidden" th:value="${form.seatNo}">
+        <input type="hidden" name="type" th:value="${form.passType}">
+        <div class="lg:col-span-2 space-y-6">
+
+            <section class="card p-6">
+                <h2 class="font-bold text-lg"><span class="chip bg-navy text-white mr-2">1</span>Select your corridor</h2>
+                <div class="grid md:grid-cols-2 gap-3 mt-4">
+                    <label th:each="r : ${corridors}" class="border rounded-xl p-4 cursor-pointer has-[:checked]:border-navy has-[:checked]:bg-navy-light">
+                        <input type="radio" name="routeId" th:value="${r.id}" th:checked="${r.id == route.id}" class="hidden" onchange="this.form.submit()">
+                        <div class="flex justify-between"><b class="text-navy" th:text="${r.code}">TC-104</b>
+                            <span class="text-xs text-slate-500" th:text="${#numbers.formatDecimal(r.distanceKm, 1, 0)} + ' km'">19 km</span></div>
+                        <div class="font-semibold text-sm mt-1" th:text="${r.endpoints}">Kharar → Sector 17</div>
+                        <div class="text-xs text-slate-500" th:text="'Every ' + ${r.frequencyMinutes} + ' mins in peak · ' + ${r.tagline}">every 10 min</div>
+                    </label>
+                </div>
+            </section>
+
+            <section class="card p-6">
+                <h2 class="font-bold text-lg"><span class="chip bg-navy text-white mr-2">2</span>Choose commute timings</h2>
+                <div class="label mt-4" th:text="'Morning outbound (' + ${route.firstStop.stop.name} + ' → ' + ${route.lastStop.stop.name} + ')'">Morning</div>
+                <div class="flex flex-wrap gap-2">
+                    <label th:each="t : ${morningTimes}" class="chip border px-4 py-2 cursor-pointer text-sm has-[:checked]:bg-navy has-[:checked]:text-white">
+                        <input type="radio" name="morning" class="hidden" th:value="${t}" th:checked="${t.toString() == form.morningTime}" onchange="this.form.submit()">
+                        <span th:text="${#temporals.format(t, 'hh:mm a')}">08:05 AM</span></label>
+                </div>
+                <div class="label mt-5" th:text="'Evening return (' + ${route.lastStop.stop.name} + ' → ' + ${route.firstStop.stop.name} + ')'">Evening</div>
+                <div class="flex flex-wrap gap-2">
+                    <label th:each="t : ${eveningTimes}" class="chip border px-4 py-2 cursor-pointer text-sm has-[:checked]:bg-navy has-[:checked]:text-white">
+                        <input type="radio" name="evening" class="hidden" th:value="${t}" th:checked="${t.toString() == form.eveningTime}" onchange="this.form.submit()">
+                        <span th:text="${#temporals.format(t, 'hh:mm a')}">06:00 PM</span></label>
+                </div>
+                <p class="text-xs text-slate-500 mt-3 bg-slate-50 rounded-lg p-2">⚡ Tip: your seat is guaranteed only on these two buses. Other buses can still be booked as normal tickets.</p>
+            </section>
+
+            <section class="card p-6">
+                <h2 class="font-bold text-lg"><span class="chip bg-navy text-white mr-2">3</span>Choose your fixed reserved seat</h2>
+                <div class="flex flex-wrap gap-4 text-xs mt-3">
+                    <span class="flex items-center gap-1"><span class="seat seat-available !w-4 !h-4"></span>Available</span>
+                    <span class="flex items-center gap-1"><span class="seat seat-selected !w-4 !h-4"></span>Your selected seat</span>
+                    <span class="flex items-center gap-1"><span class="seat seat-pass !w-4 !h-4"></span>Taken by another pass</span>
+                    <span class="flex items-center gap-1"><span class="seat seat-ladies !w-4 !h-4"></span>Ladies reserved</span>
+                </div>
+                <div class="mx-auto max-w-xs bg-slate-50 border-2 border-slate-200 rounded-[2rem] p-5 mt-4">
+                    <div class="text-center text-xs font-bold text-slate-500 tracking-widest border-b pb-2 mb-3">FRONT · DRIVER</div>
+                    <div th:each="row : ${rows}" class="flex justify-between mb-2">
+                        <div class="flex gap-2">
+                            <th:block th:each="label, st : ${row.value}" th:if="${st.index < 2}">
+                                <th:block th:replace="~{fragments/pass-seat :: passSeat(${label})}"></th:block>
+                            </th:block>
+                        </div>
+                        <div class="flex gap-2">
+                            <th:block th:each="label, st : ${row.value}" th:if="${st.index >= 2}">
+                                <th:block th:replace="~{fragments/pass-seat :: passSeat(${label})}"></th:block>
+                            </th:block>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs text-pink-700 bg-pink-50 rounded-lg p-2 mt-4 text-center">♀ UT Women Safety Directive: ladies seats (rows 1–2) can only be fixed by women pass holders.</p>
+            </section>
+
+            <section class="card p-6">
+                <h2 class="font-bold text-lg"><span class="chip bg-navy text-white mr-2">4</span>Choose duration &amp; activation date</h2>
+                <div class="grid grid-cols-3 gap-3 mt-4">
+                    <label th:each="e : ${priceByMonths}" class="border rounded-xl p-4 cursor-pointer text-center has-[:checked]:border-brand has-[:checked]:bg-brand-light">
+                        <input type="radio" name="months" class="hidden" th:value="${e.key}" th:checked="${e.key == form.months}" onchange="this.form.submit()">
+                        <div class="text-xs text-slate-500" th:text="${e.key == 1} ? 'FLEXIBLE' : (${e.key == 3} ? 'QUARTERLY' : 'HALF-YEARLY')">FLEX</div>
+                        <div class="font-bold" th:text="${e.key} + (${e.key == 1} ? ' Month' : ' Months')">1 Month</div>
+                        <div class="text-xl font-extrabold text-navy" th:text="'₹' + ${#numbers.formatDecimal(e.value, 1, 'COMMA', 0, 'POINT')}">₹1,490</div>
+                        <div class="text-xs text-green-700" th:text="'Save ' + ${discounts.get(e.key)} + '%'">Save 25%</div>
+                    </label>
+                </div>
+                <div class="grid md:grid-cols-2 gap-4 mt-4">
+                    <div><label class="label">Pass activation date</label>
+                        <input type="date" name="start" class="input" th:value="${form.startDate}" th:min="${today}" onchange="this.form.submit()"></div>
+                    <div><label class="label">Valid until</label>
+                        <div class="input bg-slate-100" th:text="${#temporals.format(endDate, 'EEE, dd MMM yyyy')}">end</div></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Summary -->
+        <aside>
+            <div class="card p-6 sticky top-20">
+                <div class="text-xs font-bold text-brand-dark">ACTIVE CORRIDOR PASS SUMMARY</div>
+                <h3 class="text-xl font-extrabold text-navy" th:text="${route.code} + ' Express'">TC-104 Express</h3>
+                <p class="text-sm text-slate-500" th:text="${route.endpoints}">Kharar → Sector 17</p>
+                <div class="grid grid-cols-2 gap-3 mt-4 text-sm">
+                    <div class="bg-slate-50 rounded-lg p-2"><div class="text-xs text-slate-500">Outbound bus</div><b th:text="${#temporals.format(morningTime, 'hh:mm a')}">08:05</b></div>
+                    <div class="bg-slate-50 rounded-lg p-2"><div class="text-xs text-slate-500">Return bus</div><b th:text="${#temporals.format(eveningTime, 'hh:mm a')}">06:00</b></div>
+                    <div class="bg-slate-50 rounded-lg p-2"><div class="text-xs text-slate-500">Assigned seat</div><b th:text="${form.seatNo != null ? form.seatNo : 'Not chosen'}">4A</b></div>
+                    <div class="bg-slate-50 rounded-lg p-2"><div class="text-xs text-slate-500">Plan duration</div><b th:text="${form.months} + ' month(s)'">1 month</b></div>
+                </div>
+                <div class="mt-4 text-sm space-y-1.5">
+                    <div class="flex justify-between"><span>Single ticket fare</span><span th:text="'₹' + ${singleFare}">₹45</span></div>
+                    <div class="flex justify-between text-slate-500"><span th:text="'Daily tickets (2 × 22 days × ' + ${form.months} + ')'">Daily tickets</span><span class="line-through" th:text="'₹' + ${fullPrice}">₹1,980</span></div>
+                    <div class="flex justify-between text-green-700"><span th:text="'Pass discount (' + ${discount} + '%)' + (${form.passType.name() == 'STUDENT_SENIOR'} ? ' + 50% concession' : '')">Discount</span><span>✓</span></div>
+                </div>
+                <div class="mt-4 bg-slate-900 text-white rounded-xl p-4 flex justify-between items-center">
+                    <span class="text-xs">TOTAL PASS PRICE<br><span class="text-white/60">GST inclusive</span></span>
+                    <span class="text-3xl font-extrabold" th:text="'₹' + ${#numbers.formatDecimal(price, 1, 'COMMA', 0, 'POINT')}">₹1,490</span>
+                </div>
+                <div th:if="${form.passType.name() == 'STUDENT_SENIOR'}" class="text-xs bg-amber-50 text-amber-800 rounded-lg p-2 mt-3">Student / senior concession: carry a valid institutional or age ID while travelling.</div>
+            </div>
+        </aside>
+    </form>
+
+    <!-- Buy (POST) -->
+    <form method="post" th:action="@{/passes}" th:object="${form}" class="mt-6 card p-5 flex flex-wrap items-center justify-between gap-4">
+        <input type="hidden" th:field="*{routeId}">
+        <input type="hidden" th:field="*{morningTime}">
+        <input type="hidden" th:field="*{eveningTime}">
+        <input type="hidden" th:field="*{seatNo}">
+        <input type="hidden" th:field="*{months}">
+        <input type="hidden" th:field="*{startDate}">
+        <input type="hidden" th:field="*{passType}">
+        <ul class="text-sm text-slate-600 space-y-1">
+            <li>✓ Seat <b th:text="${form.seatNo != null ? form.seatNo : '(choose above)'}">4A</b> reserved on both buses every weekday</li>
+            <li>✓ Digital QR pass &amp; GST invoice issued instantly</li>
+        </ul>
+        <button class="btn-primary text-base" th:disabled="${form.seatNo == null}"
+                th:classappend="${form.seatNo == null} ? 'opacity-50 cursor-not-allowed' : ''"
+                th:text="'Buy Pass — ₹' + ${#numbers.formatDecimal(price, 1, 'COMMA', 0, 'POINT')}">Buy Pass</button>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

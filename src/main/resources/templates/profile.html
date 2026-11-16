@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Profile & Wallet')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+    <div class="text-xs text-slate-500">Commuter Portal › <span th:text="${currentUser.fullName}">Harpreet</span> › Profile &amp; Wallet</div>
+
+    <!-- Header card -->
+    <section class="card p-6 mt-3 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <span class="w-16 h-16 rounded-full bg-navy text-white text-2xl font-bold flex items-center justify-center" th:text="${currentUser.initials}">HS</span>
+            <div>
+                <div class="flex items-center gap-2"><h1 class="text-2xl font-extrabold text-navy" th:text="${currentUser.fullName}">Harpreet Singh</h1>
+                    <span class="chip bg-green-100 text-green-700">✓ Mobile verified</span>
+                    <span th:if="${activePass != null}" class="chip bg-amber-100 text-amber-700">Pass holder</span></div>
+                <div class="text-sm text-slate-500 mt-1">
+                    📞 +91 <span th:text="${currentUser.mobile}">98765 43210</span>
+                    <span th:if="${currentUser.email != null}"> · ✉ <span th:text="${currentUser.email}">mail</span></span>
+                    <span th:if="${currentUser.homeCity != null}"> · 📍 <span th:text="${currentUser.homeCity}">Kharar</span></span>
+                </div>
+                <div class="text-xs text-slate-400 mt-1" th:text="'Commuter UID: TC-' + ${currentUser.id} + '-' + ${#temporals.format(currentUser.createdAt, 'yyMM')}">UID</div>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <div class="bg-slate-50 rounded-xl px-4 py-2 text-xs"><div class="text-slate-500">Transactions</div><b class="text-base" th:text="${txCount}">24</b></div>
+            <div class="bg-navy text-white rounded-xl px-5 py-2"><div class="text-xs text-white/70">Active balance</div>
+                <b class="text-xl" th:text="'₹' + ${#numbers.formatDecimal(currentUser.walletBalance, 1, 2)}">₹250.00</b></div>
+        </div>
+    </section>
+
+    <div class="grid lg:grid-cols-4 gap-6 mt-6">
+        <!-- Left navigation -->
+        <aside class="space-y-4">
+            <nav class="card p-3 text-sm">
+                <div class="text-xs font-bold tracking-widest text-slate-400 px-3 py-2">ACCOUNT NAVIGATION</div>
+                <a th:href="@{/profile(tab='info')}" class="flex items-center gap-3 px-3 py-3 rounded-xl" th:classappend="${tab == 'info'} ? 'bg-navy text-white' : 'hover:bg-slate-50'">
+                    <span>🪪</span><span><b>Personal Info</b><br><span class="text-xs opacity-70">Name, email, password</span></span></a>
+                <a th:href="@{/profile(tab='wallet')}" class="flex items-center gap-3 px-3 py-3 rounded-xl" th:classappend="${tab == 'wallet'} ? 'bg-navy text-white' : 'hover:bg-slate-50'">
+                    <span>👛</span><span><b>TriCity Wallet</b><br><span class="text-xs opacity-70">Balance, top-up, refund logs</span></span></a>
+                <a th:href="@{/profile(tab='routes')}" class="flex items-center gap-3 px-3 py-3 rounded-xl" th:classappend="${tab == 'routes'} ? 'bg-navy text-white' : 'hover:bg-slate-50'">
+                    <span>⑂</span><span><b>Saved Routes</b><br><span class="text-xs opacity-70">Quick rebook, daily corridors</span></span></a>
+                <a th:href="@{/profile(tab='contacts')}" class="flex items-center gap-3 px-3 py-3 rounded-xl" th:classappend="${tab == 'contacts'} ? 'bg-navy text-white' : 'hover:bg-slate-50'">
+                    <span>✱</span><span><b>Emergency Contacts</b><br><span class="text-xs opacity-70">Police 112, next-of-kin alert</span></span></a>
+                <a th:href="@{/profile(tab='language')}" class="flex items-center gap-3 px-3 py-3 rounded-xl" th:classappend="${tab == 'language'} ? 'bg-navy text-white' : 'hover:bg-slate-50'">
+                    <span>文</span><span><b>Language / ਭਾਸ਼ਾ</b><br><span class="text-xs opacity-70">English, Hindi, Punjabi</span></span></a>
+                <form th:action="@{/logout}" method="post" class="border-t mt-2 pt-2">
+                    <button class="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl text-red-600 hover:bg-red-50"><span>⏻</span><b>Sign Out</b></button></form>
+            </nav>
+            <div th:if="${activePass != null}" class="card p-4 bg-navy-light">
+                <div class="text-xs font-bold text-slate-500">ACTIVE SMART PASS</div>
+                <div class="font-bold text-navy mt-1" th:text="${activePass.route.code} + ' · ' + ${activePass.route.endpoints}">pass</div>
+                <div class="text-xs text-slate-500" th:text="'Valid till ' + ${#temporals.format(activePass.validTo, 'dd MMM yyyy')} + ' · ' + ${activePass.daysLeft} + ' days left'">valid</div>
+                <a th:href="@{/passes}" class="btn-light block text-center text-sm mt-3">Show pass QR</a>
+            </div>
+            <div class="text-xs text-slate-500 card p-4">ⓘ Balance or ticketing problems? Call the CTU ISBT grievance desk at <b>1800-TRICITY</b> or <a th:href="@{/help}" class="text-navy font-semibold">file a grievance</a>.</div>
+        </aside>
+
+        <section class="lg:col-span-3 space-y-6">
+
+            <!-- WALLET -->
+            <div th:if="${tab == 'wallet'}">
+                <div class="rounded-3xl p-6 text-white shadow-xl" style="background: linear-gradient(135deg,#1E3A8A,#172C6B 70%);">
+                    <div class="flex justify-between"><span><b>TriCity Civic Transit Wallet</b><br><span class="text-xs text-white/60">CTU SMART PAY · NCMC-ready</span></span>
+                        <span class="w-10 h-8 rounded-md bg-gradient-to-br from-amber-300 to-amber-500"></span></div>
+                    <div class="mt-6 text-xs text-white/60">AVAILABLE TRANSIT BALANCE</div>
+                    <div class="text-4xl font-extrabold" th:text="'₹' + ${#numbers.formatDecimal(currentUser.walletBalance, 1, 'COMMA', 2, 'POINT')}">₹250.00</div>
+                    <span class="chip bg-green-500/20 text-green-200 mt-2">● Active for tap &amp; travel</span>
+                    <form th:action="@{/profile/wallet/topup}" method="post" class="mt-6 flex flex-wrap items-center gap-2">
+                        <span class="text-xs text-white/60 mr-1">Quick add:</span>
+                        <button name="amount" value="100" class="chip bg-white/10 hover:bg-white/20 px-4 py-2 text-sm">+ ₹100</button>
+                        <button name="amount" value="250" class="chip bg-white/10 hover:bg-white/20 px-4 py-2 text-sm">+ ₹250</button>
+                        <button name="amount" value="500" class="chip bg-white/10 hover:bg-white/20 px-4 py-2 text-sm">+ ₹500</button>
+                        <button name="amount" value="1000" class="chip bg-white/10 hover:bg-white/20 px-4 py-2 text-sm">+ ₹1,000</button>
+                        <input type="hidden" name="method" value="UPI (simulated)">
+                    </form>
+                    <form th:action="@{/profile/wallet/topup}" method="post" class="mt-3 flex gap-2 max-w-md">
+                        <input name="amount" type="number" min="1" max="5000" placeholder="Other amount (max ₹5,000)" class="flex-1 rounded-xl px-4 py-2 text-slate-800">
+                        <input type="hidden" name="method" value="UPI (simulated)">
+                        <button class="btn-primary !py-2">+ Add Money</button>
+                    </form>
+                    <p class="text-xs text-white/50 mt-2">Top-ups are simulated in this project (no real payment gateway).</p>
+                </div>
+
+                <div class="flex flex-wrap justify-between items-end gap-3 mt-8">
+                    <div><h2 class="text-xl font-bold text-navy">Transaction History &amp; Refund Logs</h2>
+                        <p class="text-sm text-slate-500">Every payment, refund and top-up on your account.</p></div>
+                    <a th:href="@{/profile/statement.csv}" class="btn-light text-sm">⬇ Statement (CSV)</a>
+                </div>
+                <div class="flex flex-wrap gap-2 mt-4 text-sm font-semibold">
+                    <a th:each="fl : ${filters}" th:href="@{/profile(tab='wallet', filter=${fl})}"
+                       class="px-4 py-1.5 rounded-full border" th:classappend="${filter == fl} ? 'bg-navy text-white border-navy' : 'bg-white'"
+                       th:text="${fl == 'all'} ? 'All transactions' : (${fl == 'credits'} ? 'Refunds & credits' : (${fl == 'debits'} ? 'Pass & seat debits' : 'Wallet top-ups'))">All</a>
+                </div>
+                <div class="card mt-4 overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                        <tr><th class="text-left p-3">Date &amp; time</th><th class="text-left p-3">Description</th><th class="text-left p-3">Route</th>
+                            <th class="text-left p-3">Payment method</th><th class="text-right p-3">Amount (₹)</th><th class="text-right p-3">Status</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(transactions)}"><td colspan="6" class="p-6 text-center text-slate-500">No transactions yet.</td></tr>
+                        <tr th:each="t : ${transactions}" class="border-t">
+                            <td class="p-3 text-xs" th:text="${#temporals.format(t.createdAt, 'dd MMM yyyy')}">date<br></td>
+                            <td class="p-3"><b th:text="${t.description}">desc</b>
+                                <div class="text-xs text-slate-500" th:if="${t.reference != null}" th:text="'Ref ' + ${t.reference}">ref</div></td>
+                            <td class="p-3"><span th:if="${t.routeCode != null}" class="chip bg-navy-light text-navy" th:text="${t.routeCode}">TC-104</span></td>
+                            <td class="p-3 text-xs" th:text="${t.method}">UPI</td>
+                            <td class="p-3 text-right font-bold" th:classappend="${t.credit} ? 'text-green-700' : 'text-red-600'"
+                                th:text="(${t.credit} ? '+ ₹' : '- ₹') + ${#numbers.formatDecimal(t.amount.abs(), 1, 'COMMA', 2, 'POINT')}">+ ₹45.00</td>
+                            <td class="p-3 text-right"><span class="chip" th:classappend="${t.credit} ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'"
+                                                             th:text="${t.credit} ? 'Success' : 'Completed'">Success</span></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SAVED ROUTES -->
+            <div th:if="${tab == 'routes'}">
+                <h2 class="text-xl font-bold text-navy">Saved Commuter Corridors</h2>
+                <p class="text-sm text-slate-500">Worked out from the trips you take most. One click to book again.</p>
+                <div th:if="${#lists.isEmpty(savedRoutes)}" class="card p-8 text-center text-slate-500 mt-4">Book a few trips and your regular routes will appear here.</div>
+                <div class="grid md:grid-cols-2 gap-4 mt-4">
+                    <div th:each="r, st : ${savedRoutes}" class="card p-5" th:classappend="${st.first} ? 'border-2 border-navy' : ''">
+                        <div class="flex gap-2 text-xs"><span class="chip" th:classappend="${st.first} ? 'bg-navy text-white' : 'bg-slate-100'"
+                                                              th:text="${st.first} ? 'PRIMARY CORRIDOR' : 'FREQUENT TRIP'">PRIMARY</span>
+                            <span class="chip bg-brand-light text-brand-dark" th:text="'Route ' + ${r.routeCode()}">TC-104</span></div>
+                        <h3 class="font-bold text-lg text-navy mt-3" th:text="${r.from()} + ' → ' + ${r.to()}">Kharar → Sector 17</h3>
+                        <p class="text-xs text-slate-500" th:text="'Usually ' + ${#temporals.format(r.usualTime(), 'hh:mm a')} + ' · ' + ${r.trips()} + ' trip(s) · last fare ₹' + ${r.usualFare()}">usual</p>
+                        <a class="btn-primary inline-block mt-4 text-sm" th:href="@{/search(from=${r.fromStopId()}, to=${r.toStopId()}, slot='all')}">⚡ 1-Click Book Seat</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PERSONAL INFO -->
+            <div th:if="${tab == 'info'}" class="grid md:grid-cols-2 gap-6">
+                <form th:action="@{/profile/info}" method="post" class="card p-6 space-y-4">
+                    <h2 class="font-bold text-lg">Personal information</h2>
+                    <div><label class="label">Full name</label><input class="input" name="fullName" th:value="${currentUser.fullName}" required></div>
+                    <div><label class="label">Mobile (login, cannot change)</label><input class="input bg-slate-100" th:value="'+91 ' + ${currentUser.mobile}" disabled></div>
+                    <div><label class="label">Email</label><input class="input" name="email" type="email" th:value="${currentUser.email}"></div>
+                    <div><label class="label">Home city</label>
+                        <select class="input" name="homeCity"><option th:each="c : ${cities}" th:value="${c}" th:text="${c}" th:selected="${c == currentUser.homeCity}">City</option></select></div>
+                    <div><label class="label">Gender</label><input class="input bg-slate-100" th:value="${currentUser.gender.label}" disabled>
+                        <p class="text-xs text-slate-500 mt-1">Used for ladies seats. Contact the help desk to change it.</p></div>
+                    <button class="btn-primary">Save changes</button>
+                </form>
+                <form th:action="@{/profile/password}" method="post" class="card p-6 space-y-4 h-fit">
+                    <h2 class="font-bold text-lg">Change password</h2>
+                    <div><label class="label">Current password</label><input class="input" type="password" name="current" required></div>
+                    <div><label class="label">New password (8+ characters)</label><input class="input" type="password" name="newPassword" required minlength="8"></div>
+                    <div><label class="label">Confirm new password</label><input class="input" type="password" name="confirm" required></div>
+                    <button class="btn-navy">Update password</button>
+                </form>
+            </div>
+
+            <!-- EMERGENCY CONTACTS -->
+            <div th:if="${tab == 'contacts'}" class="grid md:grid-cols-2 gap-6">
+                <form th:action="@{/profile/emergency}" method="post" class="card p-6 space-y-4">
+                    <h2 class="font-bold text-lg">Next-of-kin for the Safety Guard</h2>
+                    <p class="text-sm text-slate-500">This number is pre-filled when you switch on "Share live trip" at checkout.</p>
+                    <div><label class="label">Contact name</label><input class="input" name="name" th:value="${currentUser.emergencyName}" placeholder="e.g. Gurmeet Kaur (mother)"></div>
+                    <div><label class="label">Mobile number</label><input class="input" name="mobile" maxlength="10" th:value="${currentUser.emergencyMobile}" placeholder="98140 11200"></div>
+                    <button class="btn-primary">Save contact</button>
+                </form>
+                <div class="card p-6 space-y-3 h-fit">
+                    <h2 class="font-bold text-lg">Emergency numbers</h2>
+                    <a href="tel:112" class="flex justify-between bg-red-50 text-red-700 rounded-xl px-4 py-3 font-semibold"><span>Police / All emergencies</span><span>112</span></a>
+                    <a href="tel:1091" class="flex justify-between bg-pink-50 text-pink-700 rounded-xl px-4 py-3 font-semibold"><span>Women helpline</span><span>1091</span></a>
+                    <a href="tel:01722700000" class="flex justify-between bg-navy-light text-navy rounded-xl px-4 py-3 font-semibold"><span>CTU control room</span><span>0172-2700000</span></a>
+                </div>
+            </div>
+
+            <!-- LANGUAGE -->
+            <div th:if="${tab == 'language'}" class="card p-6">
+                <h2 class="font-bold text-lg">Language / भाषा / ਭਾਸ਼ਾ</h2>
+                <div class="grid md:grid-cols-3 gap-3 mt-4">
+                    <a href="?tab=language&lang=en" class="border rounded-xl p-4 text-center" th:classappend="${#locale.language == 'en'} ? 'border-navy bg-navy-light' : ''"><b class="text-lg">English</b></a>
+                    <a href="?tab=language&lang=hi" class="border rounded-xl p-4 text-center" th:classappend="${#locale.language == 'hi'} ? 'border-navy bg-navy-light' : ''"><b class="text-lg">हिंदी</b></a>
+                    <a href="?tab=language&lang=pa" class="border rounded-xl p-4 text-center" th:classappend="${#locale.language == 'pa'} ? 'border-navy bg-navy-light' : ''"><b class="text-lg">ਪੰਜਾਬੀ</b></a>
+                </div>
+            </div>
+
+            <div class="card p-4 bg-navy-light text-xs text-slate-600 flex justify-between gap-4">
+                <span><b class="text-navy">Regulatory &amp; consumer protection.</b> Wallet funds are used only for TriCity transit. Disruption refunds are credited automatically.</span>
+                <span class="whitespace-nowrap">RBI PPI-style ✓</span>
+            </div>
+        </section>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

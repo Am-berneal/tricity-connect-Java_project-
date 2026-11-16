@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Live tracking')}">
+</head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('bookings')}"></header>
+
+<main class="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+    <div class="flex flex-wrap justify-between items-center gap-3 text-sm">
+        <span><a th:href="@{/bookings}" class="text-slate-500 hover:text-navy">← Back to My Bookings</a>
+            <span class="text-slate-400 mx-2">|</span>
+            <b class="text-navy" th:text="'AIS-140 live telemetry · Route ' + ${b.trip.route.code} + ' (' + ${b.trip.route.endpoints} + ')'">Route</b></span>
+        <span class="text-xs text-slate-500">Updates every 30 seconds · <span th:text="${#temporals.format(#temporals.createNow(), 'hh:mm:ss a')}">now</span></span>
+    </div>
+    <div class="mt-2 flex gap-2 text-xs">
+        <span class="chip bg-navy-light text-navy" th:text="'PNR ' + ${b.pnr}">PNR</span>
+        <span class="chip bg-navy-light text-navy" th:text="'Seat ' + ${b.seatNo}">Seat</span>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6 mt-4">
+        <!-- Map (schematic, drawn with SVG from the stop distances) -->
+        <section class="lg:col-span-2 card p-4">
+            <svg viewBox="0 0 800 420" class="w-full h-auto rounded-xl bg-[#EEF2F7]">
+                <defs>
+                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#DCE3EE" stroke-width="1"/>
+                    </pattern>
+                </defs>
+                <rect width="800" height="420" fill="url(#grid)"/>
+                <rect x="560" y="40" width="140" height="80" rx="16" fill="#D7EED9"/>
+                <text x="630" y="85" text-anchor="middle" font-size="12" fill="#5B8A61">Leisure Valley</text>
+                <rect x="90" y="300" width="160" height="70" rx="16" fill="#D7EED9"/>
+                <text x="170" y="340" text-anchor="middle" font-size="12" fill="#5B8A61">Green Belt</text>
+
+                <!-- route line (points worked out in TrackingService) -->
+                <polyline fill="none" stroke="#1E3A8A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"
+                          th:attr="points=${track.mapPoints()}"/>
+                <g th:each="s : ${track.stops()}">
+                    <circle th:attr="cx=${s.x()}, cy=${s.y()}, r=${s.boarding() or s.drop() ? 12 : 9}, fill=${s.state() == 'passed' ? '#94A3B8' : '#FFFFFF'}, stroke=${s.boarding() ? '#F97316' : '#1E3A8A'}" stroke-width="4"/>
+                    <text th:attr="x=${s.x()}, y=${s.y() + 34}" text-anchor="middle" font-size="13" font-weight="600" fill="#0F172A" th:text="${s.name()}">Stop</text>
+                    <text th:attr="x=${s.x()}, y=${s.y() + 50}" text-anchor="middle" font-size="11" fill="#64748B" th:text="${#temporals.format(s.expectedAt(), 'hh:mm a')}">time</text>
+                </g>
+                <!-- bus marker -->
+                <g>
+                    <rect th:attr="x=${track.busX() - 24}, y=${track.busY() - 46}" width="48" height="28" rx="8" fill="#F97316"/>
+                    <text th:attr="x=${track.busX()}, y=${track.busY() - 26}" text-anchor="middle" font-size="15">🚌</text>
+                    <text th:attr="x=${track.busX()}, y=${track.busY() - 54}" text-anchor="middle" font-size="11" font-weight="700" fill="#EA580C" th:text="${b.trip.bus.regNo}">bus</text>
+                </g>
+            </svg>
+            <div class="flex flex-wrap justify-between gap-2 mt-3 text-xs text-slate-500">
+                <span>● Live bus · ◯ Upcoming stop · ● Passed stop · <span class="text-brand-dark font-semibold">◯ Your boarding stop</span></span>
+                <span th:text="'Trip distance ' + ${#numbers.formatDecimal(b.trip.route.distanceKm, 1, 1)} + ' km total'">19 km</span>
+            </div>
+        </section>
+
+        <!-- Status panel -->
+        <aside class="space-y-4">
+            <div class="card p-5">
+                <div class="flex justify-between items-start">
+                    <span class="chip bg-brand-light text-brand-dark">BOARDING ALERT</span>
+                    <span class="text-xs text-slate-500 text-right">ETA at stop<br><b class="text-base text-slate-800" th:text="${#temporals.format(b.trip.expectedAt(b.fromStop), 'hh:mm a')}">07:45</b></span>
+                </div>
+                <h2 class="text-3xl font-extrabold text-navy mt-2"
+                    th:text="${track.finished()} ? 'Trip completed' : (${track.minutesToBoarding() > 0} ? ('Arriving in ' + ${track.minutesToBoarding()} + ' mins') : 'Bus has passed your stop')">Arriving in 6 mins</h2>
+                <p class="text-sm text-slate-500" th:text="${track.statusText()}">status</p>
+                <div class="text-xs mt-3 flex justify-between"><span th:text="'Coach ' + ${b.trip.route.code} + ' (' + ${b.trip.bus.regNo} + ')'">Coach</span>
+                    <span class="text-green-700" th:text="${b.trip.delayMinutes > 0} ? ('+' + ${b.trip.delayMinutes} + ' min delay') : '● On time'">On time</span></div>
+                <div class="h-2 bg-slate-100 rounded-full mt-2"><div class="h-2 rounded-full bg-gradient-to-r from-navy to-brand" th:style="'width:' + ${track.progressPercent()} + '%'"></div></div>
+            </div>
+
+            <div class="card p-5">
+                <div class="flex justify-between"><h3 class="font-bold">Trip stops &amp; ETAs</h3>
+                    <span class="text-xs text-slate-500" th:text="${#lists.size(track.stops())} + ' stops scheduled'">5 stops</span></div>
+                <ol class="mt-4 space-y-3">
+                    <li th:each="s : ${track.stops()}" class="flex gap-3 items-start">
+                        <span class="mt-1 w-3 h-3 rounded-full shrink-0"
+                              th:classappend="${s.state() == 'passed'} ? 'bg-slate-400' : (${s.state() == 'next'} ? 'bg-brand ring-4 ring-brand/20' : 'border-2 border-navy')"></span>
+                        <div class="flex-1 text-sm" th:classappend="${s.boarding()} ? 'bg-brand-light -mx-2 px-2 py-1 rounded-lg' : ''">
+                            <div class="flex justify-between">
+                                <b th:text="${s.name()}">Kharar</b>
+                                <span th:text="${#temporals.format(s.expectedAt(), 'hh:mm a')}">07:45</span>
+                            </div>
+                            <div class="text-xs text-slate-500">
+                                <span th:text="${s.city()}">Mohali</span>
+                                <span th:if="${s.boarding()}" class="text-brand-dark font-semibold"> · YOUR BOARDING STOP</span>
+                                <span th:if="${s.drop()}" class="text-navy font-semibold"> · YOUR DROP STOP</span>
+                                <span th:if="${s.state() == 'passed'}"> · departed</span>
+                            </div>
+                        </div>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="card p-5 text-sm">
+                <h3 class="font-bold">Coach crew &amp; diagnostics</h3>
+                <div class="grid grid-cols-2 gap-3 mt-3 text-xs">
+                    <div class="bg-slate-50 rounded-lg p-2"><div class="text-slate-500">Driver</div><b th:text="${b.trip.driverName}">Kuldeep</b></div>
+                    <div class="bg-slate-50 rounded-lg p-2"><div class="text-slate-500">Speed</div><b th:text="${track.speedKmh()} + ' km/h'">41</b></div>
+                    <div class="bg-slate-50 rounded-lg p-2"><div class="text-slate-500">Cabin</div><b>22°C · AC</b></div>
+                    <div class="bg-slate-50 rounded-lg p-2"><div class="text-slate-500">Depot</div><b th:text="${b.trip.bus.depot}">Depot</b></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-4">
+                    <a class="btn-light text-center text-sm" target="_blank"
+                       th:href="'https://wa.me/' + ${b.emergencyContact != null ? '91' + b.emergencyContact : ''} + '?text=' + ${#uris.escapeQueryParam('I am on TriCity Connect bus ' + b.trip.bus.regNo + ' (' + b.trip.route.code + '), seat ' + b.seatNo + ', reaching ' + b.toStop.stop.name + ' at ' + #temporals.format(b.dropTime, 'hh:mm a'))}">Share Live Trip</a>
+                    <a class="btn-light text-center text-sm" href="tel:1800874248">Call Helpline</a>
+                </div>
+                <a href="tel:112" class="block text-center mt-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl py-3">⚠ EMERGENCY SOS (POLICE 112)</a>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script>setTimeout(() => location.reload(), 30000);</script>
+</body>
+</html>

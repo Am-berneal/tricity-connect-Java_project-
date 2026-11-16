@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('My bookings')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('bookings')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+    <div class="flex flex-wrap justify-between items-end gap-4">
+        <div>
+            <div class="text-xs font-bold tracking-widest text-brand-dark">COMMUTER TRANSIT PASS &amp; BOOKINGS · <span class="text-green-700">✓ CTU synchronised</span></div>
+            <h1 class="text-4xl font-extrabold text-navy mt-1">Active Commute Hub</h1>
+            <p class="text-slate-500">Manage your tickets, digital boarding QR codes and express seat reservations.</p>
+        </div>
+        <div class="card px-5 py-3 flex gap-6 text-sm">
+            <div><div class="text-xs text-slate-500">Wallet balance</div><div class="font-bold text-lg" th:text="'₹' + ${#numbers.formatDecimal(currentUser.walletBalance, 1, 2)}">₹240.00</div></div>
+            <div><div class="text-xs text-slate-500">Carbon saved</div><div class="font-bold text-lg text-green-700" th:text="${carbonSaved} + ' kg'">18.4 kg</div></div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="inline-flex bg-white border rounded-xl p-1 mt-6 text-sm font-semibold">
+        <a th:href="@{/bookings(tab='upcoming')}" class="px-4 py-2 rounded-lg" th:classappend="${tab == 'upcoming'} ? 'bg-navy text-white' : 'text-slate-600'"
+           th:text="'Upcoming Trips (' + ${#lists.size(upcoming)} + ')'">Upcoming (2)</a>
+        <a th:href="@{/bookings(tab='completed')}" class="px-4 py-2 rounded-lg" th:classappend="${tab == 'completed'} ? 'bg-navy text-white' : 'text-slate-600'"
+           th:text="'Past Completed (' + ${#lists.size(completed)} + ')'">Completed</a>
+        <a th:href="@{/bookings(tab='cancelled')}" class="px-4 py-2 rounded-lg" th:classappend="${tab == 'cancelled'} ? 'bg-navy text-white' : 'text-slate-600'"
+           th:text="'Cancelled / Refunded (' + ${#lists.size(cancelled)} + ')'">Cancelled</a>
+    </div>
+
+    <!-- ================= UPCOMING ================= -->
+    <div th:if="${tab == 'upcoming'}">
+        <div th:if="${#lists.isEmpty(upcoming)}" class="card p-10 text-center mt-6">
+            <div class="text-4xl">🎫</div><h3 class="font-bold mt-2">No upcoming trips</h3>
+            <a th:href="@{/}" class="btn-primary inline-block mt-4">Book a seat</a>
+        </div>
+
+        <!-- Featured (next) trip -->
+        <section th:if="${featured != null}" class="card mt-6 overflow-hidden">
+            <div class="bg-navy text-white px-6 py-3 flex justify-between items-center text-sm">
+                <span>● <b>LIVE FLEET RADAR</b> · <span th:text="${featuredTrack.statusText()}">Bus arriving</span>
+                    <span th:if="${featuredTrack.minutesToBoarding() > 0 and featuredTrack.minutesToBoarding() < 180}"
+                          th:text="' · reaches your stop in ' + ${featuredTrack.minutesToBoarding()} + ' mins'"></span></span>
+                <span class="bg-white/10 rounded-lg px-3 py-1 font-bold tracking-wider" th:text="'PNR: ' + ${featured.pnr}">PNR</span>
+            </div>
+            <div class="grid lg:grid-cols-3">
+                <div class="lg:col-span-2 p-6">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="chip bg-brand-dark text-white" th:text="${featured.trip.route.code} + ' EXPRESS'">TC-104 EXPRESS</span>
+                        <span class="chip bg-slate-100" th:text="${featured.trip.bus.type.label}">AC Electric</span>
+                        <span class="ml-auto text-sm text-brand-dark font-semibold" th:text="'🕒 ' + ${#temporals.format(featured.boardingTime, 'EEE dd MMM · hh:mm a')}">Today</span>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-5 mt-4 grid grid-cols-3 items-center">
+                        <div><div class="text-xs text-slate-500">ORIGIN</div>
+                            <div class="text-2xl font-extrabold text-navy" th:text="${#temporals.format(featured.boardingTime, 'hh:mm a')}">05:45 PM</div>
+                            <div th:text="${featured.fromStop.stop.name}">ISBT-17</div><div class="text-xs text-slate-500" th:text="'📍 ' + ${featured.trip.bay}">Bay 4</div></div>
+                        <div class="text-center text-xs text-slate-500"><span th:text="${featured.durationMinutes} + ' mins · ' + ${#numbers.formatDecimal(featured.distanceKm, 1, 0)} + ' km'">32 mins</span>
+                            <div class="h-1 bg-gradient-to-r from-navy to-brand rounded my-2"></div><span class="text-green-700 font-semibold">Direct corridor</span></div>
+                        <div class="text-right"><div class="text-xs text-slate-500">DESTINATION</div>
+                            <div class="text-2xl font-extrabold text-navy" th:text="${#temporals.format(featured.dropTime, 'hh:mm a')}">06:17 PM</div>
+                            <div th:text="${featured.toStop.stop.name}">Mohali IT City</div></div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-sm">
+                        <div class="bg-navy-light rounded-xl p-3"><div class="text-xs text-slate-500">Seat assignment</div><div class="text-2xl font-extrabold text-navy" th:text="${featured.seatNo}">08B</div></div>
+                        <div class="bg-navy-light rounded-xl p-3"><div class="text-xs text-slate-500">Total fare paid</div><div class="text-xl font-extrabold" th:text="'₹' + ${#numbers.formatDecimal(featured.totalFare, 1, 0)}">₹45</div>
+                            <div class="text-xs text-slate-500" th:text="${featured.paymentMethod.label}">UPI</div></div>
+                        <div class="bg-navy-light rounded-xl p-3"><div class="text-xs text-slate-500">Bus registration</div><div class="font-bold" th:text="${featured.trip.bus.regNo}">PB-65</div>
+                            <div class="text-xs text-slate-500" th:text="${featured.trip.bus.depot}">Depot</div></div>
+                        <div class="bg-navy-light rounded-xl p-3"><div class="text-xs text-slate-500">Pilot / captain</div><div class="font-bold" th:text="${featured.trip.driverName}">Gurpreet S.</div>
+                            <div class="text-xs text-slate-500">★ 4.9</div></div>
+                    </div>
+                    <div class="flex flex-wrap gap-3 mt-5 items-center">
+                        <a class="btn-primary" th:href="@{/bookings/{p}/track(p=${featured.pnr})}">◎ Track Live Bus on Map</a>
+                        <a class="btn-navy" th:href="@{/bookings/{p}/confirmation(p=${featured.pnr})}">View Ticket</a>
+                        <a class="btn-light" th:href="@{/bookings/{p}/ticket.pdf(p=${featured.pnr})}">⬇ Download PDF</a>
+                        <button type="button" class="ml-auto text-red-600 font-semibold text-sm" th:data-pnr="${featured.pnr}" onclick="openCancel(this.dataset.pnr)">↺ Cancel &amp; Refund</button>
+                    </div>
+                </div>
+                <div class="bg-navy-light p-6 flex flex-col items-center justify-center">
+                    <div class="flex justify-between w-full text-xs font-bold"><span>((·)) NFC &amp; QR GATE</span><span class="chip bg-green-500 text-white">VALID</span></div>
+                    <img th:src="${featuredQr}" alt="Boarding QR" class="w-48 h-48 mt-4 bg-white rounded-2xl p-3 shadow">
+                    <div class="text-xs text-slate-500 mt-2">Show at the bus door</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Other upcoming trips -->
+        <section class="mt-4 space-y-3">
+            <div th:each="b, st : ${upcoming}" th:if="${!st.first}" class="card p-5 flex flex-wrap items-center gap-4">
+                <span class="w-14 h-14 rounded-xl bg-navy-light text-navy text-xs font-bold flex flex-col items-center justify-center">🚌<span th:text="${b.trip.route.code}">TC</span></span>
+                <div class="flex-1">
+                    <div class="font-bold text-lg text-navy">
+                        <span th:text="${b.fromStop.stop.name} + ' → ' + ${b.toStop.stop.name}">Phase 7 → Panchkula</span>
+                        <span class="chip bg-green-100 text-green-700 ml-2">Confirmed</span>
+                        <span class="chip bg-slate-100 ml-1" th:text="${#temporals.format(b.boardingTime, 'EEE · dd MMM')}">Tomorrow</span>
+                    </div>
+                    <div class="text-sm text-slate-500" th:text="'🕒 Departure ' + ${#temporals.format(b.boardingTime, 'hh:mm a')} + ' · Seat ' + ${b.seatNo} + ' · Bus ' + ${b.trip.bus.regNo} + ' · Ref ' + ${b.pnr} + ' · ₹' + ${#numbers.formatDecimal(b.totalFare, 1, 0)}">info</div>
+                </div>
+                <a class="btn-light text-sm" th:href="@{/bookings/{p}/confirmation(p=${b.pnr})}">View Pass</a>
+                <button type="button" class="text-red-600 text-sm font-semibold" th:data-pnr="${b.pnr}" onclick="openCancel(this.dataset.pnr)">⊗ Cancel Trip</button>
+            </div>
+        </section>
+
+        <!-- Refund rules + mini map -->
+        <section class="grid md:grid-cols-2 gap-6 mt-6">
+            <div class="card p-6">
+                <h3 class="font-bold text-lg">♻ Instant Refund Engine</h3>
+                <p class="text-xs text-slate-500">CTU unified transit guarantee rules · refunds go to your TriCity Wallet immediately</p>
+                <div class="mt-4 space-y-2 text-sm">
+                    <div class="flex justify-between bg-green-50 rounded-lg px-4 py-2"><span>⊙ 2 hours or more before departure</span><b class="text-green-700">90% refund</b></div>
+                    <div class="flex justify-between bg-amber-50 rounded-lg px-4 py-2"><span>◐ 30 mins – 2 hours before</span><b class="text-amber-700">50% refund</b></div>
+                    <div class="flex justify-between bg-red-50 rounded-lg px-4 py-2"><span>⊘ Less than 30 mins or bus departed</span><b class="text-red-600">Non-refundable</b></div>
+                </div>
+            </div>
+            <div class="card p-6" th:if="${featured != null}">
+                <div class="flex justify-between"><h3 class="font-bold text-lg">↗ Active Corridor Visualiser</h3>
+                    <span class="chip bg-green-100 text-green-700">GPS active</span></div>
+                <p class="text-xs text-slate-500" th:text="'Real-time position · Route ' + ${featured.trip.route.code}">Route</p>
+                <div class="mt-5 relative h-2 bg-slate-200 rounded-full">
+                    <div class="absolute h-2 bg-navy rounded-full" th:style="'width:' + ${featuredTrack.progressPercent()} + '%'"></div>
+                    <span class="absolute -top-2 w-6 h-6 rounded-full bg-brand border-4 border-white shadow" th:style="'left: calc(' + ${featuredTrack.progressPercent()} + '% - 12px)'"></span>
+                </div>
+                <div class="grid gap-2 mt-5 text-xs" th:style="'grid-template-columns: repeat(' + ${#lists.size(featuredTrack.stops())} + ', minmax(0, 1fr))'">
+                    <div th:each="s : ${featuredTrack.stops()}" class="bg-slate-50 rounded-lg p-2 text-center"
+                         th:classappend="${s.boarding()} ? 'ring-2 ring-brand' : (${s.drop()} ? 'ring-2 ring-navy' : '')">
+                        <div class="font-bold" th:text="${#temporals.format(s.expectedAt(), 'hh:mm a')}">05:45</div>
+                        <div class="text-slate-500" th:text="${s.name()}">ISBT-17</div>
+                    </div>
+                </div>
+                <div class="flex justify-between text-xs mt-4"><span th:text="${featuredTrack.statusText()}">Status</span>
+                    <a class="text-brand-dark font-semibold" th:href="@{/bookings/{p}/track(p=${featured.pnr})}">Full screen radar →</a></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ================= COMPLETED ================= -->
+    <section th:if="${tab == 'completed'}" class="mt-6 space-y-3">
+        <div th:if="${#lists.isEmpty(completed)}" class="card p-10 text-center text-slate-500">No completed trips yet.</div>
+        <div th:each="b : ${completed}" class="card p-5 flex flex-wrap items-center gap-4">
+            <span class="w-12 h-12 rounded-xl bg-blue-50 text-navy flex items-center justify-center">✓</span>
+            <div class="flex-1">
+                <div class="font-bold" th:text="${b.fromStop.stop.name} + ' → ' + ${b.toStop.stop.name}">Kharar → Sector 17</div>
+                <div class="text-sm text-slate-500" th:text="${#temporals.format(b.boardingTime, 'EEE dd MMM yyyy, hh:mm a')} + ' · Seat ' + ${b.seatNo} + ' · ' + ${b.trip.route.code} + ' · PNR ' + ${b.pnr}">info</div>
+            </div>
+            <span class="chip bg-blue-100 text-blue-700">Completed</span>
+            <span class="font-bold" th:text="'₹' + ${b.totalFare}">₹45</span>
+            <a class="btn-light text-sm" th:href="@{/bookings/{p}/ticket.pdf(p=${b.pnr})}">Invoice PDF</a>
+        </div>
+    </section>
+
+    <!-- ================= CANCELLED ================= -->
+    <section th:if="${tab == 'cancelled'}" class="mt-6 space-y-3">
+        <div th:if="${#lists.isEmpty(cancelled)}" class="card p-10 text-center text-slate-500">
+            <div class="text-4xl">🎉</div>No cancelled trips. Nice!
+        </div>
+        <div th:each="b : ${cancelled}" class="card p-5 flex flex-wrap items-center gap-4">
+            <span class="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">⊗</span>
+            <div class="flex-1">
+                <div class="font-bold" th:text="${b.fromStop.stop.name} + ' → ' + ${b.toStop.stop.name}">Route</div>
+                <div class="text-sm text-slate-500" th:text="${#temporals.format(b.boardingTime, 'EEE dd MMM, hh:mm a')} + ' · Seat ' + ${b.seatNo} + ' · PNR ' + ${b.pnr} + (${b.cancelReason != null} ? (' · Reason: ' + ${b.cancelReason}) : '')">info</div>
+            </div>
+            <span class="chip bg-slate-100 text-slate-600">Cancelled</span>
+            <div class="text-right text-sm"><div class="text-slate-500" th:text="'Paid ₹' + ${b.totalFare}">Paid</div>
+                <div class="font-bold text-green-700" th:text="'Refunded ₹' + ${b.refundAmount != null ? b.refundAmount : '0.00'}">Refunded</div></div>
+        </div>
+    </section>
+</main>
+
+<!-- Cancel dialogs (one per upcoming booking) -->
+<div th:each="b : ${upcoming}" th:id="'cancel-' + ${b.pnr}" class="fixed inset-0 bg-slate-900/50 z-50 hidden items-center justify-center p-4">
+    <form th:action="@{/bookings/{p}/cancel(p=${b.pnr})}" method="post" class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+          th:with="r=${refunds.get(b.pnr)}">
+        <div class="bg-navy text-white px-5 py-3 flex justify-between items-center">
+            <span><b th:text="'Cancel Booking — PNR: ' + ${b.pnr}">Cancel</b><br><span class="text-xs text-white/70">CTU instant refund processing protocol</span></span>
+            <button type="button" class="text-xl" th:data-pnr="${b.pnr}" onclick="closeCancel(this.dataset.pnr)">×</button>
+        </div>
+        <div class="p-5 space-y-4 text-sm">
+            <div class="bg-slate-50 rounded-xl p-3 flex justify-between">
+                <span><span class="text-xs text-slate-500">SELECTED TRANSIT ROUTE</span><br>
+                    <b th:text="${b.fromStop.stop.name} + ' → ' + ${b.toStop.stop.name} + ' (' + ${#temporals.format(b.boardingTime, 'hh:mm a')} + ')'">Route</b></span>
+                <span class="chip bg-navy-light text-navy self-center" th:text="${b.trip.route.code}">TC-104</span>
+            </div>
+            <div>
+                <div class="text-xs font-bold text-slate-500 mb-2">UNIFIED CTU REFUND MATRIX</div>
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex justify-between rounded-lg px-3 py-2" th:classappend="${r.percent() == 90} ? 'bg-green-100 font-bold' : 'bg-slate-50'"><span>More than 2 hours before departure</span><span>90% refund</span></div>
+                    <div class="flex justify-between rounded-lg px-3 py-2" th:classappend="${r.percent() == 50} ? 'bg-amber-100 font-bold' : 'bg-slate-50'"><span>30 min – 2 hours before departure</span><span>50% refund</span></div>
+                    <div class="flex justify-between rounded-lg px-3 py-2" th:classappend="${r.percent() == 0} ? 'bg-red-100 font-bold' : 'bg-slate-50'"><span>Less than 30 min before departure</span><span>No refund</span></div>
+                </div>
+            </div>
+            <div class="bg-green-50 border border-green-200 rounded-xl p-3 text-green-800 text-xs"
+                 th:text="'Current status: departure in ' + ${r.minutesLeft() >= 60 ? (r.minutesLeft() / 60) + 'h ' + (r.minutesLeft() % 60) + 'm' : r.minutesLeft() + ' min'} + ' · qualifies for ' + ${r.percent()} + '% refund tier'">status</div>
+            <div class="bg-slate-900 text-white rounded-xl p-4 flex justify-between items-center">
+                <span class="text-xs">NET CALCULATED REFUND<br><span class="text-white/60">Credited to your TriCity Wallet instantly</span></span>
+                <span class="text-2xl font-extrabold text-green-400" th:text="'₹' + ${r.amount()}">₹40.50</span>
+            </div>
+            <div>
+                <label class="label">Reason for cancellation *</label>
+                <select name="reason" class="input" required>
+                    <option value="">Please select a reason…</option>
+                    <option>Change of plans</option><option>Booked wrong bus / stop</option>
+                    <option>Found another transport</option><option>Bus delayed / disrupted</option><option>Other</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex justify-end gap-2 px-5 py-4 border-t bg-slate-50">
+            <button type="button" class="btn-light text-sm" th:data-pnr="${b.pnr}" onclick="closeCancel(this.dataset.pnr)">Keep Booking</button>
+            <button class="bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg px-4 py-2 text-sm">⊗ Confirm Cancellation</button>
+        </div>
+    </form>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script>
+    function openCancel(pnr) { const d = document.getElementById('cancel-' + pnr); d.classList.remove('hidden'); d.classList.add('flex'); }
+    function closeCancel(pnr) { const d = document.getElementById('cancel-' + pnr); d.classList.add('hidden'); d.classList.remove('flex'); }
+</script>
+</body>
+</html>

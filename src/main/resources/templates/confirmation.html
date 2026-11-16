@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Seat confirmed')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('bookings')}"></header>
+
+<main class="max-w-4xl mx-auto px-4 lg:px-6 py-8">
+    <section class="text-center card p-8 bg-gradient-to-b from-green-50 to-white">
+        <div class="w-16 h-16 mx-auto rounded-full bg-green-600 text-white flex items-center justify-center text-3xl shadow-lg">✓</div>
+        <div class="text-xs font-bold tracking-widest text-green-700 mt-3">CHANDIGARH TRANSPORT UNDERTAKING · E-PASS</div>
+        <h1 class="text-3xl font-extrabold mt-1">Seat Confirmed!</h1>
+        <p class="text-slate-500 mt-1">Your electric express transit reservation is secured. Digital boarding pass issued.</p>
+        <span th:if="${b.whatsappTicket}" class="chip bg-green-100 text-green-700 mt-3" th:text="'SMS & WhatsApp ticket sent to +91 ' + ${b.passengerMobile}">Sent</span>
+    </section>
+
+    <section class="card mt-6 overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 border-b">
+            <div><div class="font-bold text-navy">TriCity Connect Express</div>
+                <div class="text-xs text-slate-500" th:text="'Route ' + ${b.trip.route.code} + ' · Bus ' + ${b.trip.bus.regNo}">Route TC-104</div></div>
+            <span class="chip bg-green-100 text-green-700" th:text="${b.trip.bus.type.label}">100% Electric AC</span>
+        </div>
+        <div class="grid md:grid-cols-3">
+            <div class="md:col-span-2 p-6 border-r border-dashed ticket">
+                <div class="bg-slate-50 rounded-xl px-4 py-3 flex justify-between items-center">
+                    <span><span class="text-xs text-slate-500">BOOKING REFERENCE</span><br>
+                        <span class="text-2xl font-extrabold tracking-wider" th:text="'PNR: ' + ${b.pnr}">PNR: TC7K29XQ</span></span>
+                    <button type="button" class="btn-light text-xs" th:attr="data-pnr=${b.pnr}" onclick="navigator.clipboard.writeText(this.dataset.pnr); this.innerText='Copied ✓'">Copy PNR</button>
+                </div>
+                <div class="grid grid-cols-3 items-center mt-5">
+                    <div><div class="text-xs text-brand-dark font-bold">● DEPARTURE</div>
+                        <div class="font-bold text-lg" th:text="${b.fromStop.stop.name}">Kharar</div>
+                        <div class="text-sm" th:text="${#temporals.format(b.boardingTime, 'hh:mm a, dd MMM yyyy')}">07:45 AM</div>
+                        <div class="text-xs text-slate-500" th:text="${b.trip.bay}">Bay 2</div></div>
+                    <div class="text-center text-xs text-slate-500">
+                        <div th:text="${b.durationMinutes} + ' mins · ' + ${#numbers.formatDecimal(b.distanceKm, 1, 1)} + ' km'">35 mins</div>
+                        <div class="h-0.5 bg-navy my-2"></div><div>🚌</div></div>
+                    <div class="text-right"><div class="text-xs text-navy font-bold">ARRIVAL ●</div>
+                        <div class="font-bold text-lg" th:text="${b.toStop.stop.name}">Sector 17 ISBT</div>
+                        <div class="text-sm" th:text="${#temporals.format(b.dropTime, 'hh:mm a')} + ' (expected)'">08:20 AM</div></div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 text-sm">
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">PASSENGER</div>
+                        <div class="font-semibold" th:text="${b.passengerName}">Harpreet Singh</div>
+                        <div class="text-xs text-slate-500" th:text="${b.passengerAge} + ' yrs · ' + ${b.passengerGender.label}">28 · Male</div></div>
+                    <div class="bg-navy text-white rounded-xl p-3"><div class="text-xs text-white/70">RESERVED SEAT</div>
+                        <div class="font-extrabold text-xl" th:text="'Seat ' + ${b.seatNo}">Seat 4A</div></div>
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">AMOUNT PAID</div>
+                        <div class="font-semibold" th:text="'₹' + ${b.totalFare}">₹45.00</div>
+                        <div class="text-xs text-slate-500" th:text="${b.paymentMethod.label}">UPI</div></div>
+                    <div class="bg-slate-50 rounded-xl p-3"><div class="text-xs text-slate-500">TRANSIT STATE</div>
+                        <div class="font-semibold text-green-700">✓ CONFIRMED</div><div class="text-xs text-slate-500">Turnstile ready</div></div>
+                </div>
+                <p class="text-xs text-slate-400 mt-4" th:text="'Booked on ' + ${#temporals.format(b.createdAt, 'dd MMM yyyy, hh:mm a')} + ' · Base ₹' + ${b.baseFare} + ' + CGST ₹' + ${b.cgst} + ' + SGST ₹' + ${b.sgst}">Booked on</p>
+            </div>
+            <div class="p-6 flex flex-col items-center justify-center bg-slate-50">
+                <div class="text-xs font-bold tracking-wider text-slate-500">GATE / POS STUB</div>
+                <img th:src="${qr}" alt="Ticket QR code" class="w-44 h-44 mt-3 bg-white p-2 rounded-xl shadow">
+                <div class="font-mono text-xs mt-2" th:text="${b.pnr} + '-' + ${b.seatNo}">TC7K29XQ-4A</div>
+                <div class="font-semibold text-sm mt-2">Conductor &amp; Gate QR</div>
+                <div class="text-xs text-slate-500 text-center">Scan for boarding at the bus door or turnstile</div>
+            </div>
+        </div>
+    </section>
+
+    <div class="flex flex-wrap gap-3 mt-6">
+        <a class="btn-light" th:href="@{/bookings/{p}/ticket.pdf(p=${b.pnr})}">⬇ Download PDF</a>
+        <a class="btn-light" target="_blank"
+           th:href="'https://wa.me/?text=' + ${#uris.escapeQueryParam('My TriCity Connect ticket ' + b.pnr + ': ' + b.fromStop.stop.name + ' to ' + b.toStop.stop.name + ', seat ' + b.seatNo + ', ' + #temporals.format(b.boardingTime, 'dd MMM hh:mm a'))}">💬 Send to WhatsApp</a>
+        <a class="btn-light" th:href="@{/bookings/{p}/track(p=${b.pnr})}">📍 Track Bus</a>
+        <a class="btn-primary ml-auto"
+           th:href="@{/search(from=${b.toStop.stop.id}, to=${b.fromStop.stop.id}, date=${b.boardingTime.toLocalDate()}, slot='evening')}">⇄ Book Return Trip</a>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6 mt-6">
+        <div class="card p-5 text-sm">
+            <h3 class="font-bold">ⓘ Important commuter information</h3>
+            <p class="text-slate-600 mt-2">Show this QR pass to the bus conductor. Please arrive at
+                <b th:text="${b.trip.bay} + ', ' + ${b.fromStop.stop.name}">Bay 2</b> at least 5 minutes before
+                <b th:text="${#temporals.format(b.boardingTime, 'hh:mm a')}">07:45 AM</b>.</p>
+            <div class="flex gap-2 mt-3 text-xs"><span class="chip bg-slate-100">Carry a valid ID (Aadhaar / DL / Voter)</span><span class="chip bg-slate-100">Cabin luggage up to 15 kg</span></div>
+        </div>
+        <div class="card p-5 text-sm">
+            <div class="flex justify-between"><h3 class="font-bold">📍 Route location</h3>
+                <a th:href="@{/bookings/{p}/track(p=${b.pnr})}" class="text-navy text-xs font-semibold">View full map ↗</a></div>
+            <p class="mt-2 text-slate-600" th:text="${track.statusText()}">Waiting at Kharar</p>
+            <div class="h-2 bg-slate-100 rounded-full mt-3"><div class="h-2 bg-navy rounded-full" th:style="'width:' + ${track.progressPercent()} + '%'"></div></div>
+            <p class="text-xs text-slate-500 mt-2">Emergency transit: <b>112</b> / 1800-TRICITY</p>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

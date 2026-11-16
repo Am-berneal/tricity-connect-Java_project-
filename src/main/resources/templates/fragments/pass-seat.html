@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- One seat on the commuter-pass seat picker (used by pass-new.html). Clicking a free seat reloads the page with ?seat=... -->
+<th:block th:fragment="passSeat(label)">
+    <th:block th:with="ladies=${ladiesSeats.contains(label)},
+                        isTaken=${taken.contains(label)},
+                        locked=${ladies and !isWoman},
+                        chosen=${label == form.seatNo}">
+        <span th:if="${isTaken}" class="seat seat-pass" title="Fixed by another pass holder" th:text="${label}">1A</span>
+        <span th:if="${!isTaken and locked}" class="seat seat-locked" title="Ladies seat" th:text="${label}">1A</span>
+        <button th:if="${!isTaken and !locked}" type="button" th:value="${label}"
+                onclick="document.getElementById('seatHidden').value = this.value; this.form.submit()"
+                class="seat" th:classappend="${chosen} ? 'seat-selected' : (${ladies} ? 'seat-ladies' : 'seat-available')"
+                th:text="${label}">1A</button>
+    </th:block>
+</th:block>
+</body>
+</html>

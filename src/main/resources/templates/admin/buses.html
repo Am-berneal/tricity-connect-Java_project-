@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Fleet & Buses')}"></head>
+<body>
+<header th:replace="~{fragments/admin :: adminNav('buses')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-[1400px] mx-auto px-4 lg:px-6 py-6">
+    <div class="flex flex-wrap justify-between items-end gap-3">
+        <div>
+            <div class="text-xs text-slate-500">Admin Console › Fleet Management › Buses &amp; Assets</div>
+            <h1 class="text-3xl font-extrabold text-navy">Fleet &amp; Bus Asset Management</h1>
+            <p class="text-sm text-slate-500">Fleet inventory, charging and maintenance status, and seating across Chandigarh, Mohali &amp; Panchkula depots.</p>
+        </div>
+        <button type="button" class="btn-primary" onclick="document.getElementById('addPanel').classList.toggle('hidden')">+ Add Bus</button>
+    </div>
+
+    <section class="grid md:grid-cols-4 gap-4 mt-6">
+        <div class="card p-5"><div class="text-xs text-slate-500">TOTAL FLEET</div><div class="text-3xl font-extrabold text-navy" th:text="${total} + ' Buses'">52</div>
+            <div class="text-xs text-slate-500" th:text="${electric} + ' AC electric · ' + (${total} - ${electric}) + ' CNG / other'">mix</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">ACTIVE ON ROUTE</div><div class="text-3xl font-extrabold text-green-700" th:text="${countActive}">44</div>
+            <div class="h-1.5 bg-slate-100 rounded mt-2"><div class="h-1.5 bg-green-600 rounded" th:style="'width:' + ${total == 0 ? 0 : countActive * 100 / total} + '%'"></div></div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">DEPOT / CHARGING / STANDBY</div><div class="text-3xl font-extrabold text-amber-600" th:text="${countCharging}">5</div>
+            <div class="text-xs text-slate-500">Fast DC chargers at Depot 2</div></div>
+        <div class="card p-5"><div class="text-xs text-slate-500">UNDER MAINTENANCE</div><div class="text-3xl font-extrabold text-red-600" th:text="${countMaintenance}">3</div>
+            <div class="text-xs text-slate-500">In workshop</div></div>
+    </section>
+
+    <div class="grid xl:grid-cols-3 gap-6 mt-6">
+        <section class="xl:col-span-2">
+            <form method="get" class="card p-4 flex flex-wrap gap-3 items-center">
+                <input name="q" th:value="${q}" class="input !w-64 text-sm" placeholder="🔍 Search by bus reg. (e.g. CH01-GA)">
+                <select name="type" class="input !w-44 text-sm" onchange="this.form.submit()">
+                    <option value="">All powertrains</option>
+                    <option th:each="t : ${types}" th:value="${t}" th:text="${t.label}" th:selected="${t == type}">t</option></select>
+                <select name="status" class="input !w-44 text-sm" onchange="this.form.submit()">
+                    <option value="">All statuses</option>
+                    <option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}" th:selected="${s == status}">s</option></select>
+                <button class="btn-light text-sm">Filter</button>
+                <span class="text-xs text-slate-500 ml-auto" th:text="'Showing ' + ${#lists.size(buses)} + ' of ' + ${total} + ' buses'">showing</span>
+            </form>
+            <div class="card mt-4 overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="text-xs text-slate-500 uppercase bg-slate-50">
+                    <tr><th class="p-3 text-left">Bus</th><th class="p-3 text-left">Powertrain</th><th class="p-3 text-left">Capacity</th>
+                        <th class="p-3 text-left">Ladies seats</th><th class="p-3 text-left">Assigned corridor</th><th class="p-3 text-left">Status</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="b : ${buses}" class="border-t" th:classappend="${b.status.name() == 'MAINTENANCE'} ? 'bg-red-50/40' : ''">
+                        <td class="p-3"><b class="text-navy" th:text="${b.regNo}">CH01</b><br><span class="text-xs text-slate-500" th:text="${b.model} + ' · ' + ${b.depot}">model</span></td>
+                        <td class="p-3"><span class="chip" th:classappend="${b.type.name() == 'AC_ELECTRIC'} ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'" th:text="${b.type.label}">AC</span></td>
+                        <td class="p-3" th:text="${b.capacity} + ' seats'">36</td>
+                        <td class="p-3"><span class="chip bg-pink-50 text-pink-700">♀ 8 (rows 1–2)</span></td>
+                        <td class="p-3 text-xs" th:with="t=${nextTrip.get(b.id)}">
+                            <span th:if="${t != null}"><b th:text="${t.route.code}">TC-104</b> · <span th:text="${t.route.endpoints}">route</span><br>
+                                <span class="text-slate-500" th:text="'next run ' + ${#temporals.format(t.departureTime, 'hh:mm a')}">next</span></span>
+                            <span th:if="${t == null}" class="text-slate-400">Not on today's timetable</span></td>
+                        <td class="p-3">
+                            <form th:action="@{/admin/buses/{id}/status(id=${b.id})}" method="post">
+                                <select name="status" onchange="this.form.submit()" class="text-xs rounded-full px-2 py-1 font-semibold border"
+                                        th:classappend="${b.status.color == 'green'} ? 'bg-green-100 text-green-700' : (${b.status.color == 'amber'} ? 'bg-amber-100 text-amber-700' : (${b.status.color == 'red'} ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'))">
+                                    <option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}" th:selected="${s == b.status}">s</option>
+                                </select></form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Add bus -->
+        <aside id="addPanel" class="card p-6 h-fit">
+            <h2 class="font-bold text-lg">＋ Add New Bus Asset</h2>
+            <p class="text-xs text-slate-500">Register a vehicle. New buses start on standby.</p>
+            <form th:action="@{/admin/buses}" method="post" class="space-y-3 mt-4">
+                <div><label class="label">Vehicle registration number</label><input name="regNo" class="input" placeholder="CH01-GA-9821" required></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="label">Powertrain</label><select name="type" class="input"><option th:each="t : ${types}" th:value="${t}" th:text="${t.label}">t</option></select></div>
+                    <div><label class="label">Total seats</label><input name="capacity" type="number" min="16" max="60" step="4" value="36" class="input"></div>
+                </div>
+                <div><label class="label">Bus model &amp; manufacturer</label><input name="model" class="input" placeholder="Tata Starbus EV 9/9 Urban"></div>
+                <div><label class="label">Primary depot</label><select name="depot" class="input"><option th:each="d : ${depots}" th:text="${d}">d</option></select></div>
+                <div class="bg-slate-50 rounded-xl p-3">
+                    <div class="flex justify-between text-xs font-semibold mb-2"><span>Cabin seating matrix (36 seats)</span><span class="text-pink-600">Statutory 22% ladies</span></div>
+                    <div class="grid gap-1" style="grid-template-columns: repeat(5, minmax(0,1fr));">
+                        <th:block th:each="r : ${seatRows}">
+                            <span th:each="c, cs : ${cols}" th:if="${cs.index < 2}" class="text-[10px] text-center rounded py-1"
+                                  th:classappend="${r <= 2} ? 'bg-pink-200 text-pink-800' : 'bg-white border'" th:text="${r} + ${c}">1A</span>
+                            <span class="text-[9px] text-slate-400 text-center py-1" th:text="'R' + ${r}">R1</span>
+                            <span th:each="c, cs : ${cols}" th:if="${cs.index >= 2}" class="text-[10px] text-center rounded py-1"
+                                  th:classappend="${r <= 2} ? 'bg-pink-200 text-pink-800' : 'bg-white border'" th:text="${r} + ${c}">1C</span>
+                        </th:block>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-2">Rows 1–2 (8 seats) are ladies-only on every bus.</p>
+                </div>
+                <button class="btn-primary w-full">Save &amp; Register Bus</button>
+            </form>
+        </aside>
+    </div>
+</main>
+<footer th:replace="~{fragments/admin :: adminFooter}"></footer>
+</body>
+</html>

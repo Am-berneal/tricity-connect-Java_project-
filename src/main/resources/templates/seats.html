@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Select seat')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('book')}"></header>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <a href="javascript:history.back()" class="text-sm text-slate-500 hover:text-navy">← Back to schedules</a>
+            <h1 class="text-2xl font-extrabold mt-1">
+                <span th:text="${fromStop.stop.name}">Kharar</span> → <span th:text="${toStop.stop.name}">Sector 17 ISBT</span>
+                <span class="chip bg-navy text-white align-middle ml-2" th:text="${route.code} + ' · ' + ${trip.bus.type.label}">TC-104</span>
+            </h1>
+        </div>
+        <div class="card px-4 py-2 text-right">
+            <div class="font-bold text-navy" th:text="${trip.bus.regNo}">CH01-GA-2041</div>
+            <div class="text-xs text-slate-500" th:text="'Departs ' + ${#temporals.format(trip.timeAt(fromStop), 'EEE dd MMM, hh:mm a')}">Departure 07:45 AM</div>
+        </div>
+    </div>
+
+    <!-- Route timeline: choose boarding and drop stops -->
+    <form method="get" th:action="@{/trips/{id}/seats(id=${trip.id})}" class="card p-5 mt-5" id="stopForm">
+        <div class="flex justify-between text-xs font-bold tracking-wider text-slate-500 uppercase">
+            <span>Trip corridor sequence (your part of the route is highlighted)</span>
+            <span th:text="'Total distance ' + ${#numbers.formatDecimal(toStop.kmFromStart - fromStop.kmFromStart, 1, 1)} + ' km · ' + ${toStop.minutesFromStart - fromStop.minutesFromStart} + ' mins'">16.4 km</span>
+        </div>
+        <div class="relative mt-6 mb-2">
+            <div class="absolute top-4 left-6 right-6 h-1 bg-slate-200 rounded"></div>
+            <div class="flex justify-between relative">
+                <div th:each="rs : ${route.stops}" class="flex flex-col items-center text-center w-28">
+                    <span class="w-8 h-8 rounded-full border-4 flex items-center justify-center text-xs font-bold bg-white"
+                          th:classappend="${rs.seq == from} ? 'border-brand text-brand' : (${rs.seq == to} ? 'border-navy text-navy' : (${rs.seq > from and rs.seq < to} ? 'border-navy/40 text-navy' : 'border-slate-300 text-slate-400'))"
+                          th:text="${rs.seq}">1</span>
+                    <span class="text-sm font-semibold mt-2" th:text="${rs.stop.name}">Kharar</span>
+                    <span class="text-xs text-slate-500" th:text="${#temporals.format(trip.timeAt(rs), 'hh:mm a')}">07:45</span>
+                    <span th:if="${rs.seq == from}" class="chip bg-brand-light text-brand-dark mt-1">Boarding</span>
+                    <span th:if="${rs.seq == to}" class="chip bg-navy-light text-navy mt-1">Final drop</span>
+                </div>
+            </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-3 mt-4">
+            <div>
+                <label class="label">Boarding point</label>
+                <select name="from" class="input" onchange="this.form.submit()">
+                    <option th:each="rs : ${route.stops}" th:if="${rs.seq < route.lastStop.seq}" th:value="${rs.seq}"
+                            th:selected="${rs.seq == from}" th:text="${rs.stop.name} + ' — ' + ${#temporals.format(trip.timeAt(rs), 'hh:mm a')}">Kharar</option>
+                </select>
+            </div>
+            <div>
+                <label class="label">Drop-off station</label>
+                <select name="to" class="input" onchange="this.form.submit()">
+                    <option th:each="rs : ${route.stops}" th:if="${rs.seq > from}" th:value="${rs.seq}"
+                            th:selected="${rs.seq == to}" th:text="${rs.stop.name} + ' — ' + ${#temporals.format(trip.timeAt(rs), 'hh:mm a')}">Sector 17</option>
+                </select>
+            </div>
+        </div>
+    </form>
+
+    <form method="get" th:action="@{/checkout}" class="grid lg:grid-cols-3 gap-6 mt-6">
+        <input type="hidden" name="tripId" th:value="${trip.id}">
+        <input type="hidden" name="from" th:value="${from}">
+        <input type="hidden" name="to" th:value="${to}">
+
+        <!-- Bus layout -->
+        <section class="lg:col-span-2 card p-6">
+            <div class="flex flex-wrap gap-4 text-xs font-medium mb-5">
+                <span class="flex items-center gap-1.5"><span class="seat seat-available !w-5 !h-5"></span>Available</span>
+                <span class="flex items-center gap-1.5"><span class="seat seat-selected !w-5 !h-5"></span>Selected</span>
+                <span class="flex items-center gap-1.5"><span class="seat seat-booked !w-5 !h-5"></span>Booked</span>
+                <span class="flex items-center gap-1.5"><span class="seat seat-ladies !w-5 !h-5"></span>Ladies reserved</span>
+                <span class="flex items-center gap-1.5"><span class="seat seat-pass !w-5 !h-5"></span>Pass holder</span>
+                <span class="ml-auto font-bold text-brand-dark" th:text="${seatsLeft} + ' seats remaining'">19 seats remaining</span>
+            </div>
+
+            <div class="mx-auto max-w-sm bg-slate-50 border-2 border-slate-200 rounded-[2rem] p-5">
+                <div class="flex justify-between items-center text-xs text-slate-500 mb-4 border-b pb-3">
+                    <span>🚪 Boarding door</span><span class="font-bold tracking-widest">FRONT</span><span>Driver 🛞</span>
+                </div>
+                <div class="text-center text-[11px] font-semibold text-pink-600 bg-pink-50 rounded-lg py-1 mb-3">♀ Rows 1 &amp; 2: designated ladies seats</div>
+
+                <div th:each="entry : ${rows}" class="flex items-center justify-between mb-2">
+                    <div class="flex gap-2">
+                        <th:block th:each="s, st : ${entry.value}" th:if="${st.index < 2}">
+                            <th:block th:replace="~{fragments/seat :: seatCell(${s})}"></th:block>
+                        </th:block>
+                    </div>
+                    <span class="text-[10px] text-slate-400 w-8 text-center" th:text="'R' + ${entry.key}">R1</span>
+                    <div class="flex gap-2">
+                        <th:block th:each="s, st : ${entry.value}" th:if="${st.index >= 2}">
+                            <th:block th:replace="~{fragments/seat :: seatCell(${s})}"></th:block>
+                        </th:block>
+                    </div>
+                </div>
+                <div class="text-center text-xs text-slate-500 border-t pt-3 mt-3">Rear emergency exit · USB charging at every seat</div>
+            </div>
+            <p th:unless="${isWoman}" class="text-xs text-slate-500 text-center mt-4">Pink seats (rows 1–2) can only be booked by women passengers.</p>
+        </section>
+
+        <!-- Reservation panel -->
+        <aside class="space-y-4">
+            <div class="card p-5">
+                <h3 class="font-bold text-lg">Your Reservation</h3>
+                <p class="text-xs text-slate-500" th:text="'Coach ' + ${route.code} + ' · ' + ${trip.bus.type.label}">Coach TC-104</p>
+                <div class="mt-4 space-y-3 text-sm">
+                    <div class="bg-slate-50 rounded-xl p-3">
+                        <div class="text-xs text-slate-500">BOARDING POINT</div>
+                        <div class="font-semibold" th:text="${fromStop.stop.name}">Kharar</div>
+                        <div class="text-xs text-slate-500" th:text="${trip.bay} + ' · ' + ${#temporals.format(trip.timeAt(fromStop), 'hh:mm a')}">Bay 2 · 07:45</div>
+                    </div>
+                    <div class="bg-slate-50 rounded-xl p-3">
+                        <div class="text-xs text-slate-500">DROP-OFF STATION</div>
+                        <div class="font-semibold" th:text="${toStop.stop.name}">Sector 17</div>
+                        <div class="text-xs text-slate-500" th:text="${#temporals.format(trip.timeAt(toStop), 'hh:mm a')}">08:20</div>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center gap-3 bg-navy-light rounded-xl p-3">
+                    <span class="w-12 h-12 rounded-xl bg-navy text-white flex items-center justify-center font-extrabold" id="seatBadge"
+                          th:text="${selected != null} ? ${selected.label()} : '—'">4A</span>
+                    <div>
+                        <div class="font-semibold text-sm" id="seatText" th:text="${selected != null} ? 'Seat selected' : 'Tap a seat on the bus'">Window AC Comfort</div>
+                        <div class="text-xs text-slate-500">1 passenger</div>
+                    </div>
+                </div>
+                <div class="mt-4 bg-amber-50 text-amber-800 rounded-xl p-3 text-xs">
+                    <b>Stop-wise seating:</b> this seat is reserved for you between
+                    <span th:text="${fromStop.stop.name}">Kharar</span> and <span th:text="${toStop.stop.name}">Sector 17</span>.
+                    After you get off, it opens up for passengers boarding later.
+                </div>
+                <div class="mt-4 text-sm space-y-1.5">
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Fare calculation</div>
+                    <div class="flex justify-between"><span>Base fare</span><span th:text="'₹' + ${fare.base()}">42.86</span></div>
+                    <div class="flex justify-between"><span>CGST (2.5%)</span><span th:text="'₹' + ${fare.cgst()}">1.07</span></div>
+                    <div class="flex justify-between"><span>SGST (2.5%)</span><span th:text="'₹' + ${fare.sgst()}">1.07</span></div>
+                    <div th:if="${fare.peak()}" class="text-xs text-slate-500">Peak-hour fare (07–10 AM / 5–8 PM)</div>
+                    <div class="flex justify-between border-t pt-2 mt-2 text-lg font-extrabold"><span>Total fare</span><span th:text="'₹' + ${fare.total()}">45.00</span></div>
+                </div>
+                <button class="btn-primary w-full mt-4">Continue to Passenger Details →</button>
+                <p class="text-xs text-slate-500 mt-3">↺ 90% refund if cancelled 2+ hours before departure</p>
+            </div>
+            <div class="card p-4 text-sm flex justify-between">
+                <span>🚌 Terminal Bay Master</span><span class="font-semibold text-navy">1800-180-2051</span>
+            </div>
+        </aside>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script>
+    document.querySelectorAll('input.seat-radio').forEach(r => r.addEventListener('change', () => {
+        document.getElementById('seatBadge').innerText = r.value;
+        const col = r.value.slice(-1);
+        document.getElementById('seatText').innerText = (col === 'A' || col === 'D' ? 'Window' : 'Aisle') + ' AC comfort seat';
+    }));
+</script>
+</body>
+</html>

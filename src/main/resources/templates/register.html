@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Create account')}"></head>
+<body class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+<div class="w-full max-w-5xl grid md:grid-cols-5 bg-white rounded-3xl shadow-xl overflow-hidden">
+
+    <div class="md:col-span-2 bg-slate-50 p-10 flex flex-col">
+        <img th:src="@{/images/logo.png}" alt="TriCity Connect" class="h-10 self-start">
+        <span class="chip bg-green-100 text-green-700 mt-4 self-start">● Fleet 100% Operational</span>
+        <div class="mt-6 rounded-2xl overflow-hidden shadow">
+            <img th:src="@{/images/bus-hero.png}" alt="TriCity Connect electric express bus" class="w-full h-56 object-cover">
+        </div>
+        <h3 class="mt-6 font-bold text-lg">Your seat, every ride – across Chandigarh, Mohali &amp; Panchkula</h3>
+        <ul class="mt-3 space-y-2 text-sm text-slate-600">
+            <li>✓ 100% Zero-Emission Electric Express Fleet</li>
+            <li>✓ Guaranteed Reserved Seating via Live Seat Maps</li>
+            <li>✓ Ladies seats that only women can book</li>
+            <li>✓ Instant alerts when a route is disrupted</li>
+        </ul>
+        <div class="mt-auto pt-8 text-xs text-slate-500">EN • <a href="?lang=hi">हिंदी</a> • <a href="?lang=pa">ਪੰਜਾਬੀ</a> · Support: <b>1800-TRICITY</b></div>
+    </div>
+
+    <div class="md:col-span-3 p-10">
+        <div class="flex justify-between text-sm text-slate-500">
+            <a th:href="@{/login}" class="hover:text-navy">← Back to Login</a>
+            <span>📍 Region: UT Chandigarh (Zone 1)</span>
+        </div>
+        <h1 class="text-2xl font-extrabold mt-6">Create your account</h1>
+        <p class="text-slate-500 text-sm">Join daily commuters across Chandigarh, Mohali &amp; Panchkula for reserved electric express seating &amp; monthly passes.</p>
+
+        <div th:if="${error}" class="mt-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm" th:text="${error}"></div>
+
+        <form th:action="@{/register}" th:object="${form}" method="post" class="mt-6 space-y-4" novalidate>
+            <div>
+                <label class="label">Full name</label>
+                <input class="input" th:field="*{fullName}" placeholder="e.g., Harpreet Singh">
+                <p class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></p>
+            </div>
+            <div>
+                <label class="label">Mobile number (verification required)</label>
+                <div class="flex gap-2">
+                    <span class="input !w-auto font-semibold text-slate-600">+91</span>
+                    <input class="input" th:field="*{mobile}" placeholder="e.g., 9876543210" maxlength="10" inputmode="numeric">
+                    <button type="button" class="btn-light whitespace-nowrap" onclick="document.getElementById('otpBox').classList.remove('hidden')">Send OTP</button>
+                </div>
+                <p class="field-error" th:if="${#fields.hasErrors('mobile')}" th:errors="*{mobile}"></p>
+                <div id="otpBox" class="hidden mt-3">
+                    <p class="text-xs text-slate-500 mb-2">Enter the 6-digit code sent to your phone (demo: any 6 digits — real SMS needs a gateway).</p>
+                    <div class="flex gap-2">
+                        <input class="input !w-11 text-center" maxlength="1"><input class="input !w-11 text-center" maxlength="1">
+                        <input class="input !w-11 text-center" maxlength="1"><input class="input !w-11 text-center" maxlength="1">
+                        <input class="input !w-11 text-center" maxlength="1"><input class="input !w-11 text-center" maxlength="1">
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="label">Email address</label>
+                <input class="input" th:field="*{email}" placeholder="e.g., commuter@tricity.in">
+                <p class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
+            </div>
+            <div>
+                <label class="label">Gender</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="border rounded-xl py-2.5 text-center cursor-pointer has-[:checked]:bg-navy has-[:checked]:text-white">
+                        <input type="radio" th:field="*{gender}" value="MALE" class="hidden"> ♂ Male</label>
+                    <label class="border rounded-xl py-2.5 text-center cursor-pointer has-[:checked]:bg-navy has-[:checked]:text-white">
+                        <input type="radio" th:field="*{gender}" value="FEMALE" class="hidden"> ♀ Female</label>
+                    <label class="border rounded-xl py-2.5 text-center cursor-pointer has-[:checked]:bg-navy has-[:checked]:text-white">
+                        <input type="radio" th:field="*{gender}" value="OTHER" class="hidden"> ⚧ Other</label>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">ⓘ Used for reserved ladies seat allocation on express corridors.</p>
+                <p class="field-error" th:if="${#fields.hasErrors('gender')}" th:errors="*{gender}"></p>
+            </div>
+            <div>
+                <label class="label">Primary / home city</label>
+                <select class="input" th:field="*{homeCity}">
+                    <option value="">Choose your city</option>
+                    <option th:each="c : ${cities}" th:value="${c}" th:text="${c}">Chandigarh</option>
+                </select>
+                <p class="field-error" th:if="${#fields.hasErrors('homeCity')}" th:errors="*{homeCity}"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="label">Password</label>
+                    <input class="input" type="password" th:field="*{password}" placeholder="At least 8 characters">
+                    <p class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
+                </div>
+                <div>
+                    <label class="label">Confirm password</label>
+                    <input class="input" type="password" th:field="*{confirmPassword}">
+                    <p class="field-error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></p>
+                </div>
+            </div>
+            <label class="flex items-start gap-2 text-sm text-slate-600">
+                <input type="checkbox" th:field="*{acceptTerms}" class="mt-1">
+                <span>I agree to the <b>TriCity Connect Terms of Service</b>, <b>CTU Commuter Charter</b> and <b>Privacy Policy</b>.</span>
+            </label>
+            <p class="field-error" th:if="${#fields.hasErrors('acceptTerms')}" th:errors="*{acceptTerms}"></p>
+            <button class="btn-primary w-full">Create Account →</button>
+        </form>
+        <p class="text-center text-sm text-slate-500 mt-4">Already have an account? <a th:href="@{/login}" class="text-navy font-semibold">Log in</a></p>
+    </div>
+</div>
+</body>
+</html>

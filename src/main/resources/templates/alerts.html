@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Alerts')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: navbar('alerts')}"></header>
+
+<section class="bg-gradient-to-br from-navy to-navy-dark text-white">
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-10 flex flex-wrap justify-between items-center gap-6">
+        <div>
+            <span class="chip bg-white/10">● LIVE OPERATIONAL FEED · Updated just now</span>
+            <h1 class="text-4xl font-extrabold mt-3">Live Transit Bulletins &amp; Route Status</h1>
+            <p class="text-white/80 mt-2 max-w-xl">Real-time advisories, route diversions, festival feeder fleets and commute bulletins across Chandigarh, Mohali and Panchkula.</p>
+        </div>
+        <div class="bg-white/10 rounded-2xl px-6 py-4 flex items-center gap-4">
+            <span class="w-12 h-12 rounded-xl bg-green-500/20 text-green-300 flex items-center justify-center text-2xl">⚡</span>
+            <div><div class="text-xs text-white/70">NETWORK RELIABILITY</div><div class="text-2xl font-bold">98.4% On-Time</div></div>
+            <div class="text-xs text-green-300 border-l border-white/20 pl-4">✓ 12 electric routes active<br><span class="text-white/70">0 major line suspensions</span></div>
+        </div>
+    </div>
+</section>
+<div th:replace="~{fragments/layout :: flash}"></div>
+
+<main class="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+
+    <!-- ===== Passenger's own disrupted bookings: choose connector / rebook / refund ===== -->
+    <section th:if="${affected != null and !#lists.isEmpty(affected)}" class="mb-8">
+        <div th:each="b : ${affected}" th:with="d=${b.trip.disruption}" class="mb-6">
+            <div class="rounded-2xl border-2 border-red-200 bg-red-50 p-6">
+                <div class="flex flex-wrap justify-between gap-2 text-xs">
+                    <span class="chip bg-red-600 text-white">⚠ TRANSIT DISRUPTION ALERT · ACTION NEEDED</span>
+                    <span class="font-mono text-red-700" th:text="'Confirmation ' + ${b.pnr} + ' · ' + ${d.code}">PNR</span>
+                </div>
+                <h2 class="text-xl font-extrabold text-red-800 mt-3" th:text="${d.title}">Punjab buses are not entering Chandigarh</h2>
+                <p class="text-sm text-red-900/80 mt-1" th:text="${d.reason}">reason</p>
+                <div class="mt-3 bg-white/70 rounded-xl px-4 py-3 text-sm flex flex-wrap gap-x-6 gap-y-1">
+                    <span>Your trip: <b th:text="${b.trip.route.code} + ' · ' + ${b.fromStop.stop.name} + ' → ' + ${b.toStop.stop.name}">trip</b></span>
+                    <span th:text="'Departs ' + ${#temporals.format(b.boardingTime, 'EEE dd MMM, hh:mm a')} + ' · Seat ' + ${b.seatNo} + ' · Bus ' + ${b.trip.bus.regNo}">time</span>
+                    <span th:if="${b.trip.terminatesAtSeq != null}" class="font-bold text-red-700"
+                          th:text="'Bus will now end at ' + ${b.trip.route.stopAtSeq(b.trip.terminatesAtSeq).stop.name}">ends at</span>
+                    <span th:if="${b.trip.status.name() == 'CANCELLED'}" class="font-bold text-red-700">This bus is cancelled</span>
+                    <span th:if="${b.trip.delayMinutes > 0}" class="font-bold text-amber-700" th:text="'Delay +' + ${b.trip.delayMinutes} + ' mins'">delay</span>
+                </div>
+            </div>
+
+            <h3 class="font-bold text-lg mt-5">Select instant commuter resolution</h3>
+            <p class="text-sm text-slate-500">Choose how you want to continue your journey today.</p>
+            <div class="grid md:grid-cols-3 gap-4 mt-3">
+                <div th:if="${d.offerConnector and b.trip.terminatesAtSeq != null}" class="card p-5 border-2 border-green-200 flex flex-col">
+                    <div class="flex justify-between"><span class="text-3xl">🚐</span><span class="chip bg-green-100 text-green-700">Recommended · FREE</span></div>
+                    <h4 class="font-bold mt-2">Take free CTU connector bus</h4>
+                    <p class="text-sm text-slate-600 mt-1 flex-1">
+                        Get off at <b th:text="${b.trip.route.stopAtSeq(b.trip.terminatesAtSeq).stop.name}">stop</b> and board the free connector to
+                        <b th:text="${b.toStop.stop.name}">drop</b>. Show your ticket QR to the connector conductor.</p>
+                    <form th:action="@{/alerts/disruption/{p}/connector(p=${b.pnr})}" method="post">
+                        <button class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl py-2.5">✓ Claim free shuttle pass</button></form>
+                </div>
+                <div th:if="${d.offerRebook}" class="card p-5 border-2 border-navy/20 flex flex-col">
+                    <div class="flex justify-between"><span class="text-3xl">⇄</span><span class="chip bg-navy-light text-navy">No fee</span></div>
+                    <h4 class="font-bold mt-2">Rebook on next available bus</h4>
+                    <p class="text-sm text-slate-600 mt-1">Same PNR; we keep your seat number if it is free.</p>
+                    <div class="flex-1 mt-3 space-y-2">
+                        <form th:each="o : ${rebookOptions.get(b.pnr)}" th:action="@{/alerts/disruption/{p}/rebook(p=${b.pnr})}" method="post"
+                              class="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 text-sm">
+                            <input type="hidden" name="tripId" th:value="${o.trip().id}">
+                            <span><b th:text="${#temporals.format(o.boardingTime(), 'hh:mm a')}">09:30</b>
+                                <span class="text-xs text-slate-500" th:text="${o.trip().route.code} + ' · ' + ${o.seatsFree()} + ' seats free'">info</span></span>
+                            <button class="btn-navy text-xs !px-3 !py-1.5">Rebook</button>
+                        </form>
+                        <p th:if="${#lists.isEmpty(rebookOptions.get(b.pnr))}" class="text-xs text-slate-500">No seats on later buses today — choose the refund.</p>
+                    </div>
+                </div>
+                <div th:if="${d.offerRefund}" class="card p-5 border-2 border-brand/30 flex flex-col">
+                    <div class="flex justify-between"><span class="text-3xl">₹</span><span class="chip bg-brand-light text-brand-dark" th:text="'₹' + ${b.totalFare} + ' (100%)'">100%</span></div>
+                    <h4 class="font-bold mt-2">Get full refund to wallet</h4>
+                    <p class="text-sm text-slate-600 mt-1 flex-1">Instant 100% refund to your TriCity Wallet. No cancellation charges because the disruption is not your fault.</p>
+                    <form th:action="@{/alerts/disruption/{p}/refund(p=${b.pnr})}" method="post">
+                        <button class="w-full mt-4 btn-primary">Cancel &amp; Process Full Refund</button></form>
+                </div>
+            </div>
+            <form th:if="${b.trip.terminatesAtSeq == null}" th:action="@{/alerts/disruption/{p}/keep(p=${b.pnr})}" method="post" class="mt-3 text-right">
+                <button class="text-sm text-slate-500 underline">Keep my booking as it is</button></form>
+        </div>
+    </section>
+
+    <div class="flex flex-wrap gap-2 text-sm font-semibold">
+        <a th:href="@{/alerts(filter='all')}" class="px-4 py-2 rounded-full border" th:classappend="${filter == 'all'} ? 'bg-navy text-white border-navy' : 'bg-white'" th:text="'All Alerts (' + ${countAll} + ')'">All</a>
+        <a th:href="@{/alerts(filter='delays')}" class="px-4 py-2 rounded-full border" th:classappend="${filter == 'delays'} ? 'bg-navy text-white border-navy' : 'bg-white'" th:text="'Route Delays & Detours (' + ${countDelays} + ')'">Delays</a>
+        <a th:href="@{/alerts(filter='service')}" class="px-4 py-2 rounded-full border" th:classappend="${filter == 'service'} ? 'bg-navy text-white border-navy' : 'bg-white'" th:text="'Service Updates (' + ${countService} + ')'">Service</a>
+        <a th:href="@{/alerts(filter='system')}" class="px-4 py-2 rounded-full border" th:classappend="${filter == 'system'} ? 'bg-navy text-white border-navy' : 'bg-white'" th:text="'Pass Renewals & System (' + ${countSystem} + ')'">System</a>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6 mt-6">
+        <section class="lg:col-span-2 space-y-4">
+            <div th:if="${#lists.isEmpty(alerts)}" class="card p-10 text-center text-slate-500">No alerts in this category. All routes are running normally.</div>
+            <article th:each="a : ${alerts}" class="card p-6 border-l-4"
+                     th:classappend="${a.type.color == 'red'} ? 'border-l-red-600' : (${a.type.color == 'orange'} ? 'border-l-brand' : (${a.type.color == 'green'} ? 'border-l-green-600' : (${a.type.color == 'blue'} ? 'border-l-navy' : (${a.type.color == 'amber'} ? 'border-l-amber-500' : 'border-l-slate-400'))))">
+                <div class="flex flex-wrap justify-between gap-2 text-xs">
+                    <span class="flex gap-2 items-center">
+                        <span class="chip"
+                              th:classappend="${a.type.color == 'red'} ? 'bg-red-50 text-red-700' : (${a.type.color == 'orange'} ? 'bg-brand-light text-brand-dark' : (${a.type.color == 'green'} ? 'bg-green-100 text-green-700' : (${a.type.color == 'blue'} ? 'bg-navy-light text-navy' : 'bg-slate-100 text-slate-600')))"
+                              th:text="${#strings.toUpperCase(a.type.label)}">HIGH PRIORITY DETOUR</span>
+                        <b th:if="${a.routeCode != null}" class="text-navy tracking-wider" th:text="${a.routeCode}">TC-405</b>
+                    </span>
+                    <span class="text-slate-500" th:text="'🕒 ' + ${a.validWindow}">Valid</span>
+                </div>
+                <h2 class="text-lg font-bold mt-3" th:text="${a.title}">Title</h2>
+                <p class="text-sm text-slate-600 mt-1" th:text="${a.message}">Message</p>
+                <div class="flex flex-wrap gap-2 mt-4">
+                    <span th:each="t : ${a.tagList}" class="chip bg-slate-100 text-slate-700" th:text="${t}">tag</span>
+                </div>
+                <div th:if="${a.routeCode != null}" class="mt-4 text-right">
+                    <a th:href="@{/search(slot='all')}" class="text-navy text-sm font-semibold">Find another bus →</a>
+                </div>
+            </article>
+            <div th:if="${!#lists.isEmpty(resolvedDisruptions)}" class="card p-6">
+                <div class="text-xs font-bold tracking-widest text-slate-500">SYSTEM INCIDENT LOG</div>
+                <h3 class="font-bold text-lg">Past alerts &amp; incident log</h3>
+                <div th:each="d : ${resolvedDisruptions}" class="flex items-start gap-3 border-t py-3 text-sm">
+                    <span class="chip bg-green-100 text-green-700 mt-0.5">✓ Resolved</span>
+                    <div class="flex-1"><b th:text="${d.title}">title</b>
+                        <div class="text-xs text-slate-500" th:text="${d.code} + ' · ' + ${#temporals.format(d.startTime, 'dd MMM, hh:mm a')} + ' · ' + ${d.resolutionNote}">note</div></div>
+                </div>
+            </div>
+        </section>
+
+        <aside class="space-y-5">
+            <div class="card p-6">
+                <div class="flex items-center gap-3">
+                    <span class="w-11 h-11 rounded-xl bg-green-100 text-green-700 flex items-center justify-center text-xl">💬</span>
+                    <div><h3 class="font-bold">Route Alert Ping</h3><p class="text-xs text-slate-500">Instant WhatsApp &amp; SMS dispatch</p></div>
+                </div>
+                <p class="text-sm text-slate-600 mt-3">Get automatic delay alerts, detours and disruption notices for your daily corridor.</p>
+                <div th:if="${currentUser == null}" class="mt-4 text-sm bg-slate-50 rounded-xl p-3">
+                    <a th:href="@{/login}" class="text-navy font-semibold">Log in</a> to subscribe to route alerts.
+                </div>
+                <form th:if="${currentUser != null}" th:action="@{/alerts/subscribe}" method="post" class="mt-4 space-y-3">
+                    <div><label class="label">Select your regular route</label>
+                        <select name="routeId" class="input text-sm">
+                            <option th:each="r : ${routes}" th:value="${r.id}" th:text="${r.code} + ' · ' + ${r.endpoints}">TC-104</option>
+                        </select></div>
+                    <div><label class="label">WhatsApp phone number</label>
+                        <input name="whatsapp" class="input" th:value="${currentUser.mobile}" maxlength="13"></div>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="notifyBefore" value="true" checked class="accent-navy"> Notify 15 mins before bus departure</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="critical" value="true" checked class="accent-navy"> Critical breakdown &amp; detour pings</label>
+                    <button class="btn-primary w-full">🔔 Subscribe to Route Alerts</button>
+                </form>
+                <div th:if="${subscriptions != null and !#lists.isEmpty(subscriptions)}" class="mt-4 text-xs text-slate-600">
+                    <div class="font-semibold mb-1">Your subscriptions</div>
+                    <div th:each="s : ${subscriptions}" th:text="'✓ ' + ${s.route.code} + ' → +91 ' + ${s.whatsappNumber}">sub</div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl bg-navy text-white p-6">
+                <div class="text-xs font-bold tracking-wider text-white/70">ⓘ 24×7 TRICITY OPERATIONS</div>
+                <h3 class="font-bold text-lg mt-1">Transit Control Room</h3>
+                <p class="text-xs text-white/70">Lost belongings, stranded stops or ticket problems across all Tricity routes.</p>
+                <a href="tel:01722700000" class="mt-4 flex items-center justify-between bg-white/10 rounded-xl px-4 py-3">
+                    <span><span class="text-xs text-white/70">Chandigarh Control HQ</span><br><b>0172-2700000</b></span><span>↗</span></a>
+                <a href="tel:112" class="mt-3 flex items-center justify-between bg-white/10 rounded-xl px-4 py-3">
+                    <span><span class="text-xs text-white/70">Women Safety &amp; Emergency</span><br><b>Toll-Free 112 / 1091</b></span>
+                    <span class="chip bg-red-500 text-white">Priority</span></a>
+            </div>
+
+            <div class="card p-5 bg-navy-light border-navy/10">
+                <h3 class="font-bold text-navy">💡 Peak Commute Advisory</h3>
+                <p class="text-sm text-slate-600 mt-1">Heavy traffic is common on Madhya Marg towards Housing Board Chowk between 5:45 PM and 7:15 PM. Book a seat early on TC-312 / TC-215.</p>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

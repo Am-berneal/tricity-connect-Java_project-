@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<!-- Admin area top bar and footer. Use with the normal head: ~{fragments/layout :: head('...')} -->
+<body>
+
+<header th:fragment="adminNav(active)" class="bg-white border-b border-slate-200 sticky top-0 z-40">
+    <div class="max-w-[1400px] mx-auto px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
+        <a th:href="@{/admin}" class="flex items-center gap-2 shrink-0">
+            <img th:src="@{/images/logo.png}" alt="TriCity Connect" class="h-8">
+            <span class="chip bg-navy text-white text-[10px]">CTU ADMIN</span>
+        </a>
+        <nav class="hidden lg:flex items-center gap-1 text-sm font-medium">
+            <a th:href="@{/admin}" class="px-3 py-2 rounded-lg" th:classappend="${active == 'dashboard'} ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'">Dashboard</a>
+            <a th:href="@{/admin/routes}" class="px-3 py-2 rounded-lg" th:classappend="${active == 'routes'} ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'">Routes &amp; Stops</a>
+            <a th:href="@{/admin/buses}" class="px-3 py-2 rounded-lg" th:classappend="${active == 'buses'} ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'">Fleet / Buses</a>
+            <a th:href="@{/admin/trips}" class="px-3 py-2 rounded-lg" th:classappend="${active == 'trips'} ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'">Trips / Schedule</a>
+            <a th:href="@{/admin/disruptions}" class="px-3 py-2 rounded-lg" th:classappend="${active == 'disruptions'} ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'">Disruptions</a>
+            <a th:href="@{/admin/fares}" class="px-3 py-2 rounded-lg" th:classappend="${active == 'fares'} ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'">Fare Rules</a>
+            <a th:href="@{/admin/reports}" class="px-3 py-2 rounded-lg" th:classappend="${active == 'reports'} ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'">Reports</a>
+        </nav>
+        <div class="flex items-center gap-3">
+            <a th:href="@{/}" class="hidden md:inline text-xs text-slate-500 hover:text-navy">Passenger site ↗</a>
+            <a th:href="@{/conductor}" class="hidden md:inline text-xs text-slate-500 hover:text-navy">ETM ↗</a>
+            <span class="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold"
+                  th:text="${currentUser != null} ? ${currentUser.initials} : 'AD'">TA</span>
+            <span class="hidden xl:block leading-tight text-xs"><b class="text-slate-800" th:text="${currentUser != null} ? ${currentUser.fullName} : 'Admin'">Transit Admin</b><br>
+                <span class="text-slate-500">Fleet Operations Desk</span></span>
+            <form th:action="@{/logout}" method="post"><button class="text-xs text-red-600 font-semibold">Logout</button></form>
+        </div>
+    </div>
+    <!-- small screens: scrollable menu -->
+    <nav class="lg:hidden flex gap-1 overflow-x-auto px-4 pb-2 text-xs font-medium">
+        <a th:href="@{/admin}" class="px-3 py-1.5 rounded-lg bg-slate-100 whitespace-nowrap">Dashboard</a>
+        <a th:href="@{/admin/routes}" class="px-3 py-1.5 rounded-lg bg-slate-100 whitespace-nowrap">Routes</a>
+        <a th:href="@{/admin/buses}" class="px-3 py-1.5 rounded-lg bg-slate-100 whitespace-nowrap">Fleet</a>
+        <a th:href="@{/admin/trips}" class="px-3 py-1.5 rounded-lg bg-slate-100 whitespace-nowrap">Trips</a>
+        <a th:href="@{/admin/disruptions}" class="px-3 py-1.5 rounded-lg bg-slate-100 whitespace-nowrap">Disruptions</a>
+        <a th:href="@{/admin/fares}" class="px-3 py-1.5 rounded-lg bg-slate-100 whitespace-nowrap">Fares</a>
+        <a th:href="@{/admin/reports}" class="px-3 py-1.5 rounded-lg bg-slate-100 whitespace-nowrap">Reports</a>
+    </nav>
+</header>
+
+<footer th:fragment="adminFooter" class="bg-white border-t border-slate-200 mt-12">
+    <div class="max-w-[1400px] mx-auto px-4 lg:px-6 py-6 flex flex-wrap justify-between gap-4 text-xs text-slate-500">
+        <span><b class="text-navy">TriCity Connect Fleet Operations &amp; Management</b> · Chandigarh Transport Undertaking (CTU) &amp; UT Administration</span>
+        <span>Control Helpline <b>1800-TRICITY / Ext 17</b> · ICCC Sector 17</span>
+    </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/layout :: head('Conductor ETM')}"></head>
+<body class="bg-slate-100">
+<main class="max-w-md mx-auto p-3 pb-24">
+    <!-- Header -->
+    <div class="bg-navy text-white rounded-2xl p-4">
+        <div class="flex justify-between text-xs text-white/70">
+            <a th:href="@{/conductor}" class="text-white/80">← Trips</a>
+            <span th:text="'Bus ' + ${trip.bus.regNo}">bus</span>
+        </div>
+        <div class="flex justify-between items-end mt-1">
+            <div>
+                <div class="text-xl font-extrabold" th:text="${trip.route.code} + ' · ' + ${#temporals.format(trip.departureTime, 'hh:mm a')}">TC-104</div>
+                <div class="text-xs text-white/80" th:text="${trip.route.endpoints}">route</div>
+            </div>
+            <span th:if="${trip.disrupted}" class="chip bg-red-600 text-white">DISRUPTED</span>
+        </div>
+        <div class="mt-3 bg-white/10 rounded-xl p-3">
+            <div class="text-[10px] text-white/70">NOW AT</div>
+            <div class="font-bold text-lg" th:text="${current.stop.name}">stop</div>
+            <div class="text-xs text-white/80" th:text="'Next: ' + ${next.stop.name} + ' · ' + ${#temporals.format(trip.expectedAt(next), 'hh:mm a')}">next</div>
+        </div>
+        <div class="flex justify-between gap-2 mt-3 text-sm">
+            <a th:if="${seq > 1}" th:href="@{/conductor(tripId=${trip.id},seq=${seq - 1})}" class="bg-white/15 rounded-lg px-3 py-2 flex-1 text-center">‹ Prev stop</a>
+            <a th:if="${seq < last - 1}" th:href="@{/conductor(tripId=${trip.id},seq=${seq + 1})}" class="bg-brand rounded-lg px-3 py-2 flex-1 text-center font-semibold">Next stop ›</a>
+        </div>
+    </div>
+
+    <div th:replace="~{fragments/layout :: flash}"></div>
+
+    <!-- Counters -->
+    <div class="grid grid-cols-3 gap-2 mt-3 text-center">
+        <div class="card p-3"><div class="text-2xl font-extrabold text-navy" th:text="${onBoard}">0</div><div class="text-[10px] text-slate-500">ON THIS STRETCH</div></div>
+        <div class="card p-3"><div class="text-2xl font-extrabold text-green-700" th:text="${validated}">0</div><div class="text-[10px] text-slate-500">VALIDATED</div></div>
+        <div class="card p-3"><div class="text-2xl font-extrabold text-brand-dark" th:text="${freeingNext}">0</div><div class="text-[10px] text-slate-500">GET OFF NEXT</div></div>
+    </div>
+
+    <!-- Validate -->
+    <form th:action="@{/conductor/validate}" method="post" class="card p-4 mt-3">
+        <input type="hidden" name="tripId" th:value="${trip.id}">
+        <input type="hidden" name="seq" th:value="${seq}">
+        <label class="label">Scan QR or type PNR / pass number</label>
+        <div class="flex gap-2">
+            <input id="code" name="code" required class="input font-mono" placeholder="TC8K2M9Q or PASS-…" autocomplete="off">
+            <button class="btn-primary !px-4">Validate</button>
+        </div>
+        <button type="button" id="scanBtn" onclick="startScan()" class="btn-light w-full mt-2 text-sm">📷 Scan with camera</button>
+        <div id="reader" class="mt-2"></div>
+    </form>
+
+    <!-- Boarding here -->
+    <section class="card p-4 mt-3">
+        <h2 class="font-bold text-navy text-sm" th:text="'Boarding at ' + ${current.stop.name} + ' (' + ${#lists.size(boarding)} + ')'">Boarding</h2>
+        <div th:if="${#lists.isEmpty(boarding)}" class="text-xs text-slate-500 mt-2">No reserved passengers board here.</div>
+        <div th:each="b : ${boarding}" class="flex justify-between items-center border-t py-2 text-sm">
+            <div><b th:text="${b.seatNo}">1A</b> · <span th:text="${b.passengerName}">name</span>
+                <div class="text-xs text-slate-500" th:text="${b.pnr} + ' → ' + ${b.toStop.stop.name}">pnr</div></div>
+            <span th:if="${b.boarded}" class="chip bg-green-100 text-green-700">✓ IN</span>
+            <form th:unless="${b.boarded}" th:action="@{/conductor/validate}" method="post">
+                <input type="hidden" name="tripId" th:value="${trip.id}"><input type="hidden" name="seq" th:value="${seq}">
+                <input type="hidden" name="code" th:value="${b.pnr}">
+                <button class="bg-green-600 text-white text-xs font-semibold rounded-lg px-3 py-1.5">Check in</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Floor map -->
+    <section class="card p-4 mt-3">
+        <div class="flex justify-between items-center">
+            <h2 class="font-bold text-navy text-sm">Seat map — this stretch</h2>
+            <span class="text-[10px] text-slate-500">Front ↑</span>
+        </div>
+        <div class="flex flex-wrap gap-2 text-[10px] text-slate-500 mt-2">
+            <span><span class="inline-block w-2.5 h-2.5 rounded bg-green-500"></span> Validated</span>
+            <span><span class="inline-block w-2.5 h-2.5 rounded bg-navy"></span> Booked</span>
+            <span><span class="inline-block w-2.5 h-2.5 rounded bg-purple-500"></span> Pass</span>
+            <span><span class="inline-block w-2.5 h-2.5 rounded bg-amber-400"></span> Gets off next</span>
+            <span><span class="inline-block w-2.5 h-2.5 rounded border border-pink-400"></span> Ladies</span>
+        </div>
+        <div class="mt-3 space-y-1.5">
+            <div th:each="row : ${rows}" class="grid grid-cols-5 gap-1.5">
+                <th:block th:each="o, it : ${row.value}">
+                    <div th:if="${it.index == 2}"></div>
+                    <div class="rounded-lg p-1.5 text-center text-[10px] leading-tight border"
+                         th:classappend="(${o.empty()} ? 'bg-white text-slate-400' : (${o.freeingNext()} ? 'bg-amber-400 text-slate-900' : (${o.pass() != null} ? 'bg-purple-500 text-white' : (${o.booking().boarded} ? 'bg-green-500 text-white' : 'bg-navy text-white')))) + (${o.ladies()} ? ' border-pink-400 border-2' : ' border-slate-200')">
+                        <b class="block text-xs" th:text="${o.label()}">1A</b>
+                        <span th:text="${o.name()}">name</span>
+                    </div>
+                </th:block>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+    let scanner;
+    function startScan() {
+        if (typeof Html5Qrcode === 'undefined') { alert('Camera scanner could not load. Type the PNR instead.'); return; }
+        scanner = new Html5Qrcode('reader');
+        scanner.start({facingMode: 'environment'}, {fps: 10, qrbox: 220}, text => {
+            scanner.stop();
+            document.getElementById('code').value = text.trim();
+            document.getElementById('code').form.submit();
+        }).catch(() => alert('Camera permission denied. Type the PNR instead.'));
+    }
+</script>
+</body>
+</html>
