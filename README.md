@@ -161,3 +161,5 @@ The pages already follow the Stitch designs. To swap in an exported Stitch page:
 
 ## 8. Future scope
 Real payment gateway (Razorpay/UPI intent), SMS/WhatsApp gateway for OTP and alerts, real GPS feed from CTU's AIS-140 devices, Android app, ML-based demand forecasting.
+#   t r i c i t y - c o n n e c t - J a v a _ p r o j e c t -  
+ 
